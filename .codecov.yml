@@ -1,0 +1,14 @@
+# SPDX-FileCopyrightText: 2026 Comcast Cable Communications Management, LLC
+# SPDX-License-Identifier: Apache-2.0
+---
+coverage:
+  range: 50..80
+  round: down
+  precision: 2
+  status:
+    project:
+      default:
+        target: 72%
+ignore:
+  - "*_test.go"
+  - "vendor"

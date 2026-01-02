@@ -1,0 +1,30 @@
+# SPDX-FileCopyrightText: 2026 Comcast Cable Communications Management, LLC
+# SPDX-License-Identifier: Apache-2.0
+---
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - README.md
+      - CONTRIBUTING.md
+      - MAINTAINERS.md
+      - LICENSE
+      - NOTICE
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  ci:
+    uses: xmidt-org/shared-go/.github/workflows/ci.yml@192effde54deb9c7dafe963836db400042bf99b6 # v4.9.11
+    with:
+      release-type:         program
+      release-main-package: ./cmd/wrp-kafka-splitter
+      release-custom-file:  true
+      release-docker:       true
+      yaml-lint-skip:       false
+    secrets: inherit
