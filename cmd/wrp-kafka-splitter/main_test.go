@@ -1,6 +1,10 @@
 // SPDX-FileCopyrightText: 2026 Comcast Cable Communications Management, LLC
 // SPDX-License-Identifier: Apache-2.0
 
+//go:build !race
+
+// ^ Issue: Data race in go.uber.org/fx.exitCodeOption.apply() (at shutdown.go:44)
+// Root Cause: Multiple goroutines from server instances calling Shutdown() concurrently, with one writing to the exit code while another is reading it.
 package main
 
 import (
