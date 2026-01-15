@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"time"
 	"xmidt-org/wrp-kafka-splitter/internal/consumer"
 	"xmidt-org/wrp-kafka-splitter/internal/metrics"
 
@@ -45,10 +46,9 @@ type CLI struct {
 
 type LifeCycleIn struct {
 	fx.In
-	Logger     *slog.Logger
-	LC         fx.Lifecycle
-	Shutdowner fx.Shutdowner
-	Consumer   *consumer.Consumer
+	Logger   *slog.Logger
+	LC       fx.Lifecycle
+	Consumer *consumer.Consumer
 }
 
 // WrpKafkaRouter is the main entry point for the program.  It is responsible for
@@ -249,12 +249,16 @@ func onStart(logger *slog.Logger, consumer *consumer.Consumer) func(context.Cont
 	}
 }
 
-func onStop(shutdowner fx.Shutdowner, logger *slog.Logger, consumer *consumer.Consumer) func(context.Context) error {
+func onStop(logger *slog.Logger, consumer *consumer.Consumer) func(context.Context) error {
 	return func(ctx context.Context) error {
 		logger.Info("stopping consumer")
 
+		// Create a timeout context for the shutdown
+		shutdownCtx, cancel := context.WithTimeout(ctx, 60*time.Second)
+		defer cancel()
+
 		// Stop the consumer with the shutdown context
-		if err := consumer.Stop(ctx); err != nil {
+		if err := consumer.Stop(shutdownCtx); err != nil {
 			logger.Error("error stopping consumer", "error", err)
 			return err
 		}
@@ -269,7 +273,7 @@ func lifeCycle(in LifeCycleIn) {
 	in.LC.Append(
 		fx.Hook{
 			OnStart: onStart(logger, in.Consumer),
-			OnStop:  onStop(in.Shutdowner, logger, in.Consumer),
+			OnStop:  onStop(logger, in.Consumer),
 		},
 	)
 }
