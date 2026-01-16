@@ -5,7 +5,7 @@ servers:
 
   health:
     http:
-      address: ":80"
+      address: ":8080"
     path: /health
 
   metrics:
