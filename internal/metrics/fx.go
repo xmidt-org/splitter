@@ -51,7 +51,7 @@ var fxMetrics = []metricDefinition{
 }
 
 func Provide() fx.Option {
-	var opts []fx.Option
+	opts := make([]fx.Option, 0, len(fxMetrics))
 
 	for _, m := range fxMetrics {
 		labels := strings.Split(m.Labels, ",")

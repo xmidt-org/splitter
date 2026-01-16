@@ -6,6 +6,7 @@ package integrationtests
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -50,17 +51,10 @@ func (s *SplitterTestSuite) SetupTest() {
 	// create raw events topic
 	s.broker.container.Exec(s.ctx, []string{"kafka-topics", "--create", "--topic", rawEventsTopic, "--partitions", "1", "--replication-factor", "1", "--if-not-exists", "--bootstrap-server", "localhost:9092"})
 
-	// Ensure cleanup happens
-
-	// s.T().Cleanup(func() {
-	// 	if s.cancel != nil {
-	// 		s.cancel()
-	// 	}
-	// })
 }
 
 func (s *SplitterTestSuite) TearDownTest() {
-	// testify should have already stopped kafka and the service. Cancel the test context
+	// cancel test context. testify should have already stopped kafka and the service.
 	if s.cancel != nil {
 		s.cancel()
 	}
@@ -87,4 +81,6 @@ func (s *SplitterTestSuite) TestSplitterStartup() {
 
 	err := produceMessage(s.ctx, s.T(), s.broker.Address, rawEventsTopic, msg)
 	require.NoError(s.T(), err, "Failed to produce message to Kafka")
+	msgs := consumeMessages(s.T(), s.broker.Address, rawEventsTopic, 2*time.Second)
+	require.Len(s.T(), msgs, 1, "Should have consumed one message from Kafka")
 }

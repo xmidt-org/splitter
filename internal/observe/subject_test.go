@@ -105,25 +105,25 @@ func TestSubject_Notify(t *testing.T) {
 func TestSubject_NotifyMultipleObservers(t *testing.T) {
 	assert := assert.New(t)
 
-	subject := NewSubject[int]()
+	subject := NewSubject[int64]()
 
-	var count1, count2 atomic.Int32
+	var count1, count2 atomic.Int64
 
 	// Attach two observers
-	subject.Attach(func(event int) {
-		count1.Add(int32(event))
+	subject.Attach(func(event int64) {
+		count1.Add(event)
 	})
 
-	subject.Attach(func(event int) {
-		count2.Add(int32(event))
+	subject.Attach(func(event int64) {
+		count2.Add(event)
 	})
 
 	// Notify
 	subject.NotifySync(5)
 	subject.NotifySync(3)
 
-	assert.Equal(int32(8), count1.Load())
-	assert.Equal(int32(8), count2.Load())
+	assert.Equal(int64(8), count1.Load())
+	assert.Equal(int64(8), count2.Load())
 }
 
 func TestSubject_NotifyAsync(t *testing.T) {
@@ -161,21 +161,21 @@ func TestSubject_NotifyAsync(t *testing.T) {
 func TestSubject_NotifyAsyncMultipleObservers(t *testing.T) {
 	assert := assert.New(t)
 
-	subject := NewSubject[int]()
+	subject := NewSubject[int64]()
 
-	var count1, count2 atomic.Int32
+	var count1, count2 atomic.Int64
 	var wg sync.WaitGroup
 
 	wg.Add(4) // 2 notifications × 2 observers
 
 	// Attach two observers
-	subject.Attach(func(event int) {
-		count1.Add(int32(event))
+	subject.Attach(func(event int64) {
+		count1.Add(event)
 		wg.Done()
 	})
 
-	subject.Attach(func(event int) {
-		count2.Add(int32(event))
+	subject.Attach(func(event int64) {
+		count2.Add(event)
 		wg.Done()
 	})
 
@@ -186,8 +186,8 @@ func TestSubject_NotifyAsyncMultipleObservers(t *testing.T) {
 	// Wait for all async notifications
 	wg.Wait()
 
-	assert.Equal(int32(8), count1.Load())
-	assert.Equal(int32(8), count2.Load())
+	assert.Equal(int64(8), count1.Load())
+	assert.Equal(int64(8), count2.Load())
 }
 
 func TestSubject_Count(t *testing.T) {
@@ -282,7 +282,7 @@ func TestSubject_DetachDuringNotification(t *testing.T) {
 
 	subject := NewSubject[int]()
 
-	var count atomic.Int32
+	var count atomic.Int64
 	var detach func()
 
 	// Observer that detaches itself after first call
@@ -297,13 +297,13 @@ func TestSubject_DetachDuringNotification(t *testing.T) {
 
 	// First notification - observer should be called
 	subject.NotifySync(1)
-	assert.Equal(int32(1), count.Load())
+	assert.Equal(int64(1), count.Load())
 
 	// Second notification - observer should not be called
 	subject.NotifySync(2)
 	time.Sleep(10 * time.Millisecond) // Give time for potential async operations
 
-	assert.Equal(int32(1), count.Load())
+	assert.Equal(int64(1), count.Load())
 	assert.Equal(0, subject.Count())
 }
 
@@ -340,9 +340,9 @@ func TestSubject_ConcurrentNotify(t *testing.T) {
 
 	subject := NewSubject[int]()
 
-	var count atomic.Int32
+	var count atomic.Int64
 	subject.Attach(func(event int) {
-		count.Add(int32(event))
+		count.Add(int64(event))
 	})
 
 	var wg sync.WaitGroup
@@ -360,7 +360,7 @@ func TestSubject_ConcurrentNotify(t *testing.T) {
 	wg.Wait()
 
 	// Should have received all notifications
-	assert.Equal(int32(numGoroutines), count.Load())
+	assert.Equal(int64(numGoroutines), count.Load())
 }
 
 func TestSubject_ConcurrentNotifyAsync(t *testing.T) {
@@ -368,14 +368,14 @@ func TestSubject_ConcurrentNotifyAsync(t *testing.T) {
 
 	subject := NewSubject[int]()
 
-	var count atomic.Int32
+	var count atomic.Int64
 	var wg sync.WaitGroup
 
 	numGoroutines := 100
 	wg.Add(numGoroutines)
 
 	subject.Attach(func(event int) {
-		count.Add(int32(event))
+		count.Add(int64(event))
 		wg.Done()
 	})
 
@@ -389,7 +389,7 @@ func TestSubject_ConcurrentNotifyAsync(t *testing.T) {
 	wg.Wait()
 
 	// Should have received all notifications
-	assert.Equal(int32(numGoroutines), count.Load())
+	assert.Equal(int64(numGoroutines), count.Load())
 }
 
 func TestSubject_NilObserverHandling(t *testing.T) {

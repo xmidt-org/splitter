@@ -6,7 +6,6 @@ package app
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"xmidt-org/wrp-kafka-splitter/internal/consumer"
 	"xmidt-org/wrp-kafka-splitter/internal/log"
@@ -84,8 +83,8 @@ func provideConsumer(in ConsumerIn) (ConsumerOut, error) {
 		consumer.WithRequestRetries(cfg.RequestRetries),
 
 		// Connection (Duration type, not pointer)
-		consumer.WithConnIdleTimeout(time.Duration(cfg.ConnIdleTimeout)),
-		consumer.WithRequestTimeoutOverhead(time.Duration(cfg.RequestTimeoutOverhead)),
+		consumer.WithConnIdleTimeout(cfg.ConnIdleTimeout),
+		consumer.WithRequestTimeoutOverhead(cfg.RequestTimeoutOverhead),
 		consumer.WithDisableAutoCommit(cfg.DisableAutoCommit),
 		consumer.WithConsumeFromTheBeginning(cfg.ConsumeFromBeginning),
 	}

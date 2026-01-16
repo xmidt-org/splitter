@@ -4,12 +4,7 @@
 package metrics
 
 import (
-	"errors"
 	"fmt"
-)
-
-var (
-	errNilMetric = errors.New("matching metric is nil")
 )
 
 type Observer struct {
