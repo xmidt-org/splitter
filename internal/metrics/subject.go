@@ -19,10 +19,6 @@ type Metric struct {
 	histogram kit.Histogram
 }
 
-type MetricObservers struct {
-	observers []*Observer
-}
-
 // New creates a new Subject for metric events
 func New(m Metrics) *observe.Subject[Event] {
 	subject := observe.NewSubject[Event]()

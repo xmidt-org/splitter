@@ -40,29 +40,32 @@ type LogConfig struct {
 func newLogger(cfg LogConfig) (*slog.Logger, error) {
 	// Determine the output writer
 	var out io.Writer
-	if len(cfg.OutputPaths) == 0 {
+	switch len(cfg.OutputPaths) {
+	case 0:
 		out = os.Stdout
-	} else if len(cfg.OutputPaths) == 1 {
-		if cfg.OutputPaths[0] == "stdout" || cfg.OutputPaths[0] == "" {
+	case 1: // performance optimization to avoid a loop
+		switch cfg.OutputPaths[0] {
+		case "stdout", "":
 			out = os.Stdout
-		} else if cfg.OutputPaths[0] == "stderr" {
+		case "stderr":
 			out = os.Stderr
-		} else {
+		default:
 			file, err := os.OpenFile(cfg.OutputPaths[0], os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 			if err != nil {
 				return nil, err
 			}
 			out = file
 		}
-	} else {
+	default:
 		// For multiple output paths, write to all
 		writers := make([]io.Writer, 0, len(cfg.OutputPaths))
 		for _, path := range cfg.OutputPaths {
-			if path == "stdout" || path == "" {
+			switch path {
+			case "stdout", "":
 				writers = append(writers, os.Stdout)
-			} else if path == "stderr" {
+			case "stderr":
 				writers = append(writers, os.Stderr)
-			} else {
+			default:
 				file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 				if err != nil {
 					return nil, err

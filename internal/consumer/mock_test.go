@@ -84,11 +84,11 @@ func (m *mockClient) getPollFetchesCallCount() int {
 	return m.pollFetchesCallCount
 }
 
-func (m *mockClient) wasCommitCalled() bool {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	return m.commitUncommittedOffsetsCalled
-}
+// func (m *mockClient) wasCommitCalled() bool {
+// 	m.mu.Lock()
+// 	defer m.mu.Unlock()
+// 	return m.commitUncommittedOffsetsCalled
+// }
 
 func (m *mockClient) wasCloseCalled() bool {
 	m.mu.Lock()

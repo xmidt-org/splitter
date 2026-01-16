@@ -363,7 +363,7 @@ func (s *OptionsTestSuite) TestWithSASLConfig_MissingPassword() {
 
 func (s *OptionsTestSuite) TestWithTLS() {
 	tlsConfig := &tls.Config{
-		InsecureSkipVerify: true,
+		InsecureSkipVerify: true, // #nosec G402 - testing only
 	}
 
 	consumer, err := s.createTestConsumer(
