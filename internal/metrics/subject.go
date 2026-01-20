@@ -4,7 +4,7 @@
 package metrics
 
 import (
-	"xmidt-org/wrp-kafka-splitter/internal/observe"
+	"xmidt-org/splitter/internal/observe"
 
 	kit "github.com/go-kit/kit/metrics"
 )

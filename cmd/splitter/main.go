@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"os"
 
-	"xmidt-org/wrp-kafka-splitter/internal/app"
+	"xmidt-org/splitter/internal/app"
 )
 
 func main() {

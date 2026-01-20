@@ -8,7 +8,7 @@ package app
 import (
 	"testing"
 	"time"
-	"xmidt-org/wrp-kafka-splitter/internal/consumer"
+	"xmidt-org/splitter/internal/consumer"
 
 	_ "github.com/goschtalt/goschtalt/pkg/typical"
 	_ "github.com/goschtalt/yaml-decoder"

@@ -13,8 +13,8 @@ import (
 	"github.com/stretchr/testify/suite"
 	"github.com/twmb/franz-go/pkg/kgo"
 
-	"xmidt-org/wrp-kafka-splitter/internal/log"
-	"xmidt-org/wrp-kafka-splitter/internal/metrics"
+	"xmidt-org/splitter/internal/log"
+	"xmidt-org/splitter/internal/metrics"
 )
 
 // ConsumerTestSuite is the test suite for the Consumer

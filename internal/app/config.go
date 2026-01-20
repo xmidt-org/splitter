@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"os"
 
-	"xmidt-org/wrp-kafka-splitter/internal/configuration"
-	"xmidt-org/wrp-kafka-splitter/internal/consumer"
+	"xmidt-org/splitter/internal/configuration"
+	"xmidt-org/splitter/internal/consumer"
 
 	"github.com/goschtalt/goschtalt"
 	_ "github.com/goschtalt/goschtalt/pkg/typical"
