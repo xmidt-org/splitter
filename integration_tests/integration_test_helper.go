@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"xmidt-org/wrp-kafka-splitter/internal/app"
+	"xmidt-org/splitter/internal/app"
 
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
@@ -112,7 +112,7 @@ func startService(ctx context.Context, t *testing.T, brokerAddress string) (*fx.
 	}
 
 	// Create the app with configuration file
-	app, err := app.WrpKafkaRouter([]string{"-f", "wrp-kafka-splitter.yaml"})
+	app, err := app.WrpKafkaRouter([]string{"-f", "splitter.yaml"})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create splitter app: %w", err)
 	}

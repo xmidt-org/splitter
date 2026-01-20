@@ -9,8 +9,8 @@ import (
 	"log/slog"
 	"os"
 	"time"
-	"xmidt-org/wrp-kafka-splitter/internal/consumer"
-	"xmidt-org/wrp-kafka-splitter/internal/metrics"
+	"xmidt-org/splitter/internal/consumer"
+	"xmidt-org/splitter/internal/metrics"
 
 	"github.com/alecthomas/kong"
 	"github.com/goschtalt/goschtalt"
@@ -24,7 +24,7 @@ import (
 )
 
 const (
-	applicationName = "wrp-kafka-splitter"
+	applicationName = "splitter"
 )
 
 // These match what goreleaser provides.

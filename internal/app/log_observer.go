@@ -5,8 +5,8 @@ package app
 
 import (
 	"log/slog"
-	"xmidt-org/wrp-kafka-splitter/internal/log"
-	"xmidt-org/wrp-kafka-splitter/internal/observe"
+	"xmidt-org/splitter/internal/log"
+	"xmidt-org/splitter/internal/observe"
 
 	"go.uber.org/fx"
 )

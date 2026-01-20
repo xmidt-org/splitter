@@ -5,7 +5,7 @@ package log
 
 import (
 	"log/slog"
-	"xmidt-org/wrp-kafka-splitter/internal/observe"
+	"xmidt-org/splitter/internal/observe"
 )
 
 // New creates a new Subject for logging events

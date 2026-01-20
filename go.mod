@@ -1,4 +1,4 @@
-module xmidt-org/wrp-kafka-splitter
+module xmidt-org/splitter
 
 go 1.24.2
 

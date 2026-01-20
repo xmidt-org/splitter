@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"xmidt-org/wrp-kafka-splitter/internal/log"
-	"xmidt-org/wrp-kafka-splitter/internal/metrics"
+	"xmidt-org/splitter/internal/log"
+	"xmidt-org/splitter/internal/metrics"
 
 	kit "github.com/go-kit/kit/metrics"
 	"github.com/stretchr/testify/suite"

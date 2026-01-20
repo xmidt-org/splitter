@@ -4,8 +4,8 @@
 package app
 
 import (
-	"xmidt-org/wrp-kafka-splitter/internal/metrics"
-	"xmidt-org/wrp-kafka-splitter/internal/observe"
+	"xmidt-org/splitter/internal/metrics"
+	"xmidt-org/splitter/internal/observe"
 
 	kit "github.com/go-kit/kit/metrics"
 

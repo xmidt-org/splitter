@@ -12,9 +12,9 @@ import (
 	"log/slog"
 	"os"
 	"time"
-	"xmidt-org/wrp-kafka-splitter/internal/log"
-	"xmidt-org/wrp-kafka-splitter/internal/metrics"
-	"xmidt-org/wrp-kafka-splitter/internal/observe"
+	"xmidt-org/splitter/internal/log"
+	"xmidt-org/splitter/internal/metrics"
+	"xmidt-org/splitter/internal/observe"
 
 	"github.com/twmb/franz-go/pkg/kgo"
 	"github.com/twmb/franz-go/pkg/sasl/plain"

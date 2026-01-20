@@ -7,10 +7,10 @@ import (
 	"context"
 	"fmt"
 
-	"xmidt-org/wrp-kafka-splitter/internal/consumer"
-	"xmidt-org/wrp-kafka-splitter/internal/log"
-	"xmidt-org/wrp-kafka-splitter/internal/metrics"
-	"xmidt-org/wrp-kafka-splitter/internal/observe"
+	"xmidt-org/splitter/internal/consumer"
+	"xmidt-org/splitter/internal/log"
+	"xmidt-org/splitter/internal/metrics"
+	"xmidt-org/splitter/internal/observe"
 
 	"github.com/twmb/franz-go/pkg/kgo"
 	"go.uber.org/fx"

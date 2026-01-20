@@ -17,7 +17,7 @@ FROM alpine:latest
 
 # Copy over the standard things you'd expect.
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt  /etc/ssl/certs/
-COPY wrp-kafka-splitter /
+COPY splitter /
 
 # Include compliance details about the container and what it contains.
 COPY Dockerfile /
@@ -26,11 +26,11 @@ COPY LICENSE    /
 
 
 # Make the location for the configuration file that will be used.
-RUN     mkdir /etc/wrp-kafka-splitter/
-COPY .release/docker/config/config.yml  /etc/wrp-kafka-splitter/wrp-kafka-splitter.yaml
+RUN     mkdir /etc/splitter/
+COPY .release/docker/config/config.yaml  /etc/splitter/splitter.yaml
 
 USER root
 
 EXPOSE 6666
 
-ENTRYPOINT ["/wrp-kafka-splitter"]
+ENTRYPOINT ["/splitter"]
