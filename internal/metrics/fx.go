@@ -31,8 +31,9 @@ type metricDefinition struct {
 
 // metrics
 const (
-	ConsumerErrors = "consumer_errors"
-	ConsumerPauses = "consumer_pauses"
+	ConsumerFetchErrors  = "fetch_errors"
+	ConsumerCommitErrors = "commit_errors"
+	ConsumerPauses       = "fetch_pauses"
 )
 
 // labels
@@ -40,20 +41,35 @@ const (
 	ErrorTypeLabel = "type"
 	TopicLabel     = "topic"
 	PartitionLabel = "partition"
+	GroupLabel     = "group"
+	MemberIdLabel  = "member"
+	OutcomeLabel   = "outcome" // needed here because touchstone doesn't handle no labels at all for a metric
+)
+
+// canned values
+const (
+	OutcomeSuccess = "success"
+	OutcomeFailure = "failure"
 )
 
 var fxMetrics = []metricDefinition{
 	{
 		Type:   COUNTER,
-		Name:   ConsumerErrors,
-		Help:   "Total number of consumer errors of a given type",
-		Labels: fmt.Sprintf("%s,%s,%s", PartitionLabel, TopicLabel, ErrorTypeLabel),
+		Name:   ConsumerFetchErrors,
+		Help:   "Total number of fetch errors",
+		Labels: fmt.Sprintf("%s,%s", PartitionLabel, TopicLabel),
+	},
+	{
+		Type:   COUNTER,
+		Name:   ConsumerCommitErrors,
+		Help:   "Total number of commit errors",
+		Labels: fmt.Sprintf("%s,%s", GroupLabel, MemberIdLabel),
 	},
 	{
 		Type:   COUNTER,
 		Name:   ConsumerPauses,
-		Help:   "Total number of consumer pauses",
-		Labels: "",
+		Help:   "Total number of fetch pauses",
+		Labels: OutcomeLabel,
 	},
 }
 

@@ -35,9 +35,9 @@ func (s *OptionsTestSuite) createTestConsumer(opts ...Option) (*Consumer, error)
 		WithBrokers("localhost:9092"),
 		WithTopics("test-topic"),
 		WithGroupID("test-group"),
-		// WithMessageHandler(MessageHandlerFunc(func(ctx context.Context, record *kgo.Record) (wrpkafka.Outcome, error) {
-		// 	return "", nil
-		// })),
+		WithMessageHandler(MessageHandlerFunc(func(ctx context.Context, record *kgo.Record) (wrpkafka.Outcome, error) {
+			return wrpkafka.Attempted, nil
+		})),
 	}
 
 	allOpts := append(baseOpts, opts...)
@@ -566,7 +566,7 @@ func (s *OptionsTestSuite) TestWithPrometheusMetrics_EmptySubsystem() {
 func (s *OptionsTestSuite) TestWithMetricsEmitter() {
 	counter := &mockCounter{}
 	m := metrics.Metrics{
-		ConsumerErrors: counter,
+		ConsumerFetchErrors: counter,
 	}
 	emitter := metrics.New(m)
 

@@ -17,6 +17,7 @@ import (
 
 	"github.com/twmb/franz-go/pkg/kerr"
 	"github.com/twmb/franz-go/pkg/kgo"
+	"github.com/twmb/franz-go/pkg/kmsg"
 	"github.com/xmidt-org/wrpkafka"
 )
 
@@ -56,11 +57,12 @@ func New(opts ...Option) (*Consumer, error) {
 
 	consumer := &Consumer{
 		config: &consumerConfig{
-			kgoOpts: make([]kgo.Opt, 0), // TODO - this does nothing?
+			kgoOpts: make([]kgo.Opt, 0),
 		},
-		logEmitter: log.NewNoop(), // Default to no-op emitter
-		ctx:        ctx,
-		cancel:     cancel,
+		logEmitter:    log.NewNoop(),
+		metricEmitter: metrics.NewNoop(),
+		ctx:           ctx,
+		cancel:        cancel,
 	}
 
 	// Apply all options to the consumer
@@ -84,6 +86,16 @@ func New(opts ...Option) (*Consumer, error) {
 		kgo.ConsumerGroup(consumer.config.groupID),
 		kgo.ConsumeTopics(consumer.config.topics...),
 		kgo.AutoCommitMarks(), // commit marked offsets automatically
+		kgo.AutoCommitCallback(func(c *kgo.Client, req *kmsg.OffsetCommitRequest, resp *kmsg.OffsetCommitResponse, err error) {
+			consumer.metricEmitter.Notify(metrics.Event{
+				Name: metrics.ConsumerCommitErrors,
+				Labels: []string{
+					metrics.GroupLabel, req.Group,
+					metrics.MemberIdLabel, req.MemberID,
+				},
+				Value: 1,
+			})
+		}),
 	)
 
 	// Append user-provided options
@@ -129,7 +141,7 @@ func (c *Consumer) Start() error {
 
 	c.timeSinceLastSuccess.Store(time.Now().Unix())
 
-	// Start polling loop in background
+	// Start polling loops in background
 	c.running = true
 
 	c.wg.Add(1)
@@ -220,11 +232,10 @@ func (c *Consumer) pollLoop() {
 					"partition": err.Partition,
 				})
 				c.metricEmitter.Notify(metrics.Event{
-					Name: metrics.ConsumerErrors,
+					Name: metrics.ConsumerFetchErrors,
 					Labels: []string{
-						"partition", fmt.Sprintf("%d", err.Partition),
-						"topic", err.Topic,
-						"type", "record",
+						metrics.PartitionLabel, fmt.Sprintf("%d", err.Partition),
+						metrics.TopicLabel, err.Topic,
 					},
 					Value: 1,
 				})
@@ -247,15 +258,6 @@ func (c *Consumer) pollLoop() {
 					"partition": record.Partition,
 					"offset":    record.Offset,
 				})
-				c.metricEmitter.Notify(metrics.Event{
-					Name: metrics.ConsumerErrors,
-					Labels: []string{
-						metrics.PartitionLabel, fmt.Sprintf("%d", record.Partition),
-						metrics.TopicLabel, record.Topic,
-						metrics.ErrorTypeLabel, "record",
-					},
-					Value: 1,
-				})
 			}
 			c.handleOutcome(outcome, err, record)
 		})
@@ -275,7 +277,7 @@ func (c *Consumer) pollLoop() {
 // The partitions we are reading from contain a mix of QOS levels, so while the records may
 // be treated differently in the producer, they all share the same offsets
 // in the consumer. If we really want to avoid losing QOS > 74, we would probably need
-// to create a retry queue just for those records.
+// to create a local retry queue just for those records.
 //
 // 2. If we don't want to mark ANY records for commit because the producer is
 // failing due to loss of network connectivity and full buffers, we would need to modify
@@ -332,8 +334,6 @@ func (c *Consumer) startManageFetchState() {
 }
 
 func (c *Consumer) manageFetchState() {
-	// No defer c.wg.Done() here - this is called by the ticker, not as a goroutine
-
 	now := time.Now().Unix()
 	lastSuccess := c.timeSinceLastSuccess.Load()
 	elapsed := now - lastSuccess
@@ -352,6 +352,13 @@ func (c *Consumer) manageFetchState() {
 	// Not paused - check if we should pause
 	if elapsed >= c.pauseThresholdSeconds {
 		c.pauseFetchTopics()
+		c.metricEmitter.Notify(metrics.Event{
+			Name: metrics.ConsumerPauses,
+			Labels: []string{
+				metrics.OutcomeLabel, metrics.OutcomeFailure,
+			},
+			Value: 1,
+		})
 	}
 }
 
@@ -385,14 +392,6 @@ func (c *Consumer) handleRecord(record *kgo.Record) (wrpkafka.Outcome, error) {
 
 func (c *Consumer) HandlePublishEvent(event *wrpkafka.PublishEvent) {
 
-	// TODO - metrics (see talaria for how metrics are handled)
-	// c.metricEmitter.Notify(metrics.Event{
-	// 	Name:   metrics.ProducerPublish,
-	// 	Labels: labels,
-	// 	Value:  1,
-	// })
-
-	// log emission
 	if event.Error != nil {
 		c.emitLog(log.LevelError, "message publish error", map[string]any{
 			"topic":     event.Topic,

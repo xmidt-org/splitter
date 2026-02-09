@@ -228,10 +228,10 @@ func (s *ObserverTestSuite) TestObserver_HandleEvent_MultipleLabels() {
 	counter.On("With", expectedLabels).Return(counter)
 	counter.On("Add", 1.0).Return()
 
-	observer := NewObserver(ConsumerErrors, COUNTER, Metric{counter: counter})
+	observer := NewObserver(ConsumerFetchErrors, COUNTER, Metric{counter: counter})
 
 	event := Event{
-		Name:   ConsumerErrors,
+		Name:   ConsumerFetchErrors,
 		Labels: expectedLabels,
 		Value:  1.0,
 	}

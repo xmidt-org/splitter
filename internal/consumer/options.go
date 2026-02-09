@@ -46,8 +46,6 @@ type consumerConfig struct {
 	topics  []string
 	groupID string
 	handler MessageHandler
-	// autocommitDisabled bool
-	// autocommitMarks    bool
 
 	// franz-go client options
 	kgoOpts []kgo.Opt
@@ -212,30 +210,6 @@ func WithAutoCommitInterval(interval time.Duration) Option {
 		return nil
 	})
 }
-
-// WithDisableAutoCommit disables automatic offset committing.
-// When disabled, the application is responsible for committing offsets.
-// func WithDisableAutoCommit(disable bool) Option {
-// 	return optionFunc(func(c *Consumer) error {
-// 		if disable {
-// 			c.config.kgoOpts = append(c.config.kgoOpts, kgo.DisableAutoCommit())
-// 			c.config.autocommitDisabled = true
-// 		}
-// 		return nil
-// 	})
-// }
-
-// When true, only marked offsets will be auto-committed.  Note that
-// AutoCommit must be disabled for this to take effect.
-// func WithAutoCommitMarks(autoCommitMarks bool) Option {
-// 	return optionFunc(func(c *Consumer) error {
-// 		if autoCommitMarks {
-// 			c.config.kgoOpts = append(c.config.kgoOpts, kgo.AutoCommitMarks())
-// 			c.config.autocommitDisabled = true
-// 		}
-// 		return nil
-// 	})
-// }
 
 // SASL Authentication Options
 
