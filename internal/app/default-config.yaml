@@ -78,7 +78,7 @@ consumer:
   # consume_from_beginning: false
 
   # Client identification
-  # client_id: "wrp-kafka-splitter"
+  client_id: "wrp-kafka-splitter-client"
   # rack: ""
   # instance_id: ""
 

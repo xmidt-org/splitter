@@ -546,6 +546,7 @@ func WithOnPartitionsLost(fn func(context.Context, *kgo.Client, map[string][]int
 func WithClientID(clientID string) Option {
 	return optionFunc(func(c *Consumer) error {
 		if clientID != "" {
+			c.clientId = clientID
 			c.config.kgoOpts = append(c.config.kgoOpts, kgo.ClientID(clientID))
 		}
 		return nil

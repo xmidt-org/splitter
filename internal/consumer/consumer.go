@@ -7,6 +7,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"net"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -29,6 +31,7 @@ var tickerInterval = 5 * time.Second
 // It manages the consumer lifecycle, message polling, and graceful shutdown.
 type Consumer struct {
 	client        Client
+	clientId      string
 	handler       MessageHandler
 	config        *consumerConfig
 	logEmitter    *observe.Subject[log.Event]
@@ -92,6 +95,7 @@ func New(opts ...Option) (*Consumer, error) {
 				Labels: []string{
 					metrics.GroupLabel, req.Group,
 					metrics.MemberIdLabel, req.MemberID,
+					metrics.ClientIdLabel, consumer.clientId,
 				},
 				Value: 1,
 			})
@@ -312,7 +316,10 @@ func (c *Consumer) handleOutcome(outcome wrpkafka.Outcome, err error, record *kg
 
 func isRetryable(err error) bool {
 	return errors.Is(err, context.DeadlineExceeded) ||
-		errors.Is(err, kerr.RequestTimedOut) || errors.Is(err, kgo.ErrMaxBuffered)
+		errors.Is(err, kerr.RequestTimedOut) ||
+		errors.Is(err, kgo.ErrMaxBuffered) ||
+		errors.Is(err, net.ErrClosed) ||
+		errors.Is(err, io.EOF)
 }
 
 func (c *Consumer) startManageFetchState() {
@@ -352,13 +359,6 @@ func (c *Consumer) manageFetchState() {
 	// Not paused - check if we should pause
 	if elapsed >= c.pauseThresholdSeconds {
 		c.pauseFetchTopics()
-		c.metricEmitter.Notify(metrics.Event{
-			Name: metrics.ConsumerPauses,
-			Labels: []string{
-				metrics.OutcomeLabel, metrics.OutcomeFailure,
-			},
-			Value: 1,
-		})
 	}
 }
 
@@ -370,12 +370,26 @@ func (c *Consumer) pauseFetchTopics() {
 	c.client.PauseFetchTopics(c.config.topics...)
 	c.isPaused.Store(true)
 	c.unPauseAt.Store(time.Now().Add(time.Duration(c.resumeDelaySeconds) * time.Second).Unix())
+	c.metricEmitter.Notify(metrics.Event{
+		Name: metrics.ConsumerPauses,
+		Labels: []string{
+			metrics.ClientIdLabel, c.clientId,
+		},
+		Value: 1,
+	})
 }
 
 func (c *Consumer) resumeFetchTopics() {
 	c.emitLog(log.LevelInfo, "resuming fetches after pause", map[string]any{})
 	c.client.ResumeFetchTopics(c.config.topics...)
 	c.isPaused.Store(false)
+	c.metricEmitter.Notify(metrics.Event{
+		Name: metrics.ConsumerPauses,
+		Labels: []string{
+			metrics.ClientIdLabel, c.clientId,
+		},
+		Value: 0,
+	})
 }
 
 // handleRecord processes a single record using the configured handler.

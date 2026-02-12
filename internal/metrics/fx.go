@@ -43,7 +43,7 @@ const (
 	PartitionLabel = "partition"
 	GroupLabel     = "group"
 	MemberIdLabel  = "member"
-	OutcomeLabel   = "outcome" // needed here because touchstone doesn't handle no labels at all for a metric
+	ClientIdLabel  = "client"
 )
 
 // canned values
@@ -57,19 +57,19 @@ var fxMetrics = []metricDefinition{
 		Type:   COUNTER,
 		Name:   ConsumerFetchErrors,
 		Help:   "Total number of fetch errors",
-		Labels: fmt.Sprintf("%s,%s", PartitionLabel, TopicLabel),
+		Labels: fmt.Sprintf("%s,%s,%s", PartitionLabel, TopicLabel, ClientIdLabel),
 	},
 	{
 		Type:   COUNTER,
 		Name:   ConsumerCommitErrors,
 		Help:   "Total number of commit errors",
-		Labels: fmt.Sprintf("%s,%s", GroupLabel, MemberIdLabel),
+		Labels: fmt.Sprintf("%s,%s,%s", GroupLabel, MemberIdLabel, ClientIdLabel),
 	},
 	{
 		Type:   COUNTER,
 		Name:   ConsumerPauses,
 		Help:   "Total number of fetch pauses",
-		Labels: OutcomeLabel,
+		Labels: ClientIdLabel,
 	},
 }
 

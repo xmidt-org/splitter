@@ -16,7 +16,7 @@ type MetricsIn struct {
 	fx.In
 	ConsumerFetchErrors  kit.Counter `name:"fetch_errors"`
 	ConsumerCommitErrors kit.Counter `name:"commit_errors"`
-	ConsumerPauses       kit.Counter `name:"fetch_pauses"`
+	ConsumerPauses       kit.Gauge   `name:"fetch_pauses"`
 }
 
 type metricsObserverIn struct {
