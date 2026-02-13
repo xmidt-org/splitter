@@ -107,7 +107,6 @@ func New(opts ...Option) (*Consumer, error) {
 	// Create franz-go client
 	client, err := kgo.NewClient(kgoOpts...)
 
-	//client.MarkCommitRecords() // add to interface
 	if err != nil {
 		cancel()
 		return nil, fmt.Errorf("failed to create kafka client: %w", err)
@@ -279,23 +278,19 @@ func (c *Consumer) pollLoop() {
 // that are successfully Queued or Attempted will commit all previous records anyway.
 // The partitions we are reading from contain a mix of QOS levels, so while the records may
 // be treated differently in the producer, they all share the same offsets
-// in the consumer. If we really want to avoid losing QOS > 74, we would probably need
+// in the consumer. If we really want to avoid losing hign QOS, we would probably need
 // to create a local retry queue just for those records.
 //
-// 2. If we don't want to mark ANY records for commit because the producer is
-// failing due to loss of network connectivity and full buffers, we would need to modify
-// wrpkafka library to return synchronous errors for queued and attempted outcomes.
-// However, the current assumption is that these errors are not returned
-// because we are not interested in reprocessing records with QOS < 74.
-//
-// 3. as a side note, the callbacks also cannot be used to control offset commits,
+// 2. as a side note, the callbacks also cannot be used to control offset commits,
 // because there is no good way to tie the producer record to the consumer record.
 //
-// 4. We could potentially use transactions but wrpkafka does not currently support them and
-// we would probably want to batch the same QOS together which gets more complicated.
+// 4. We could all or nothing transactions but wrpkafka does not currently support them.
+// We would need to pass in our own kafka client for the session.  Also, if the all or nothing
+// fails, how long do we want to keep the messages from being committed? What is the criteria?  If
+// ANY of the errors from any of the records are retriable, we don't commit the whole lot?
 //
-// 5. One viable improvement could be to pause fetches if we see a lot of retryable errors
-// in the callbacks. (i.e. network issues or full buffers).
+// 5. This code does currently pause fetches if there are no successful writes after a configurable
+// amount of time.  But we will lose all records committed but not produced prior to the pause.
 func (c *Consumer) handleOutcome(outcome wrpkafka.Outcome, err error, record *kgo.Record) {
 	// if queued, attempted or accepted, mark for commit
 	if outcome != wrpkafka.Failed {
