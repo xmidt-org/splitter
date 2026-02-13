@@ -21,9 +21,9 @@ func (m *MockClient) Ping(ctx context.Context) error {
 	return args.Error(0)
 }
 
-func (m *MockClient) PollFetches(ctx context.Context) kgo.Fetches {
+func (m *MockClient) PollFetches(ctx context.Context) Fetches {
 	args := m.Called(ctx)
-	return args.Get(0).(kgo.Fetches)
+	return args.Get(0).(Fetches)
 }
 
 func (m *MockClient) MarkCommitRecords(records ...*kgo.Record) {
@@ -67,4 +67,18 @@ type MockHandler struct {
 func (m *MockHandler) HandleMessage(ctx context.Context, record *kgo.Record) (wrpkafka.Outcome, error) {
 	args := m.Called(ctx, record)
 	return args.Get(0).(wrpkafka.Outcome), args.Error(1)
+}
+
+// MockFetches is a testify mock for the Fetches interface.
+type MockFetches struct {
+	mock.Mock
+}
+
+func (m *MockFetches) Errors() []*kgo.FetchError {
+	args := m.Called()
+	return args.Get(0).([]*kgo.FetchError)
+}
+
+func (m *MockFetches) EachRecord(fn func(*kgo.Record)) {
+	m.Called(fn)
 }

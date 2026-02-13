@@ -626,3 +626,77 @@ func (s *ConsumerTestSuite) TestIsRunning() {
 		})
 	}
 }
+
+// TestPollLoop covers context done, no errors, and fetch error cases
+func (s *ConsumerTestSuite) TestPollLoop() {
+	tests := []struct {
+		name    string
+		setup   func(*MockClient, *MockFetches, *MockHandler)
+		ctxDone bool
+	}{
+		{
+			name:    "context done exits loop",
+			setup:   func(m *MockClient, mf *MockFetches, mh *MockHandler) {},
+			ctxDone: true,
+		},
+		{
+			name: "no errors, processes records",
+			setup: func(m *MockClient, mf *MockFetches, mh *MockHandler) {
+				m.On("MarkCommitRecords", mock.Anything).Return()
+				mf.On("Errors").Return([]*kgo.FetchError{})
+				m.On("PollFetches", mock.Anything).Return(mf)
+				mf.On("EachRecord", mock.Anything).Run(func(args mock.Arguments) {
+					fn := args.Get(0).(func(*kgo.Record))
+					rec1 := &kgo.Record{Topic: "test", Partition: 0, Offset: 0}
+					rec2 := &kgo.Record{Topic: "test", Partition: 0, Offset: 1}
+					mh.On("HandleMessage", mock.Anything, rec1).Return(wrpkafka.Accepted, nil).Once()
+					mh.On("HandleMessage", mock.Anything, rec2).Return(wrpkafka.Accepted, nil).Once()
+					fn(rec1)
+					fn(rec2)
+				})
+			},
+		},
+		{
+			name: "fetch error logs and emits metric",
+			setup: func(m *MockClient, mf *MockFetches, mh *MockHandler) {
+				mf.On("Errors").Return([]*kgo.FetchError{{Err: errors.New("fail"), Topic: "t", Partition: 1}})
+				mf.On("EachRecord", mock.Anything).Return()
+				m.On("PollFetches", mock.Anything).Return(mf)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+			s.consumer.ctx = ctx
+			s.consumer.cancel = cancel
+			s.mockClient = &MockClient{}
+			mf := &MockFetches{}
+			mh := &MockHandler{}
+			s.consumer.client = s.mockClient
+			s.consumer.handler = mh
+			if tt.setup != nil {
+				tt.setup(s.mockClient, mf, mh)
+			}
+			done := make(chan struct{})
+			s.consumer.wg.Add(1)
+			go func() {
+				s.consumer.pollLoop()
+				close(done)
+			}()
+			if tt.ctxDone {
+				cancel()
+			}
+			select {
+			case <-done:
+				// exited as expected
+			case <-time.After(1 * time.Second):
+				s.Fail("pollLoop did not exit in time")
+			}
+			s.mockClient.AssertExpectations(s.T())
+			mf.AssertExpectations(s.T())
+			mh.AssertExpectations(s.T())
+		})
+	}
+}

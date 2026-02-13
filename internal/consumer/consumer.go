@@ -106,14 +106,11 @@ func New(opts ...Option) (*Consumer, error) {
 
 	// Create franz-go client
 	client, err := kgo.NewClient(kgoOpts...)
-
 	if err != nil {
 		cancel()
 		return nil, fmt.Errorf("failed to create kafka client: %w", err)
 	}
-
-	consumer.client = client
-
+	consumer.client = &kgoClientAdapter{Client: client}
 	return consumer, nil
 }
 
