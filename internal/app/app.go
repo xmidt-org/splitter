@@ -14,6 +14,17 @@ import (
 	"go.uber.org/fx"
 )
 
+// Interfaces for dependency injection and testing
+type PublisherInterface interface {
+	Start() error
+	Stop(ctx context.Context) error
+}
+
+type ConsumerInterface interface {
+	Start() error
+	Stop(ctx context.Context) error
+}
+
 // builds the standalone service
 
 const (
@@ -93,7 +104,7 @@ func CoreModule() fx.Option {
 	)
 }
 
-func onStart(logger *slog.Logger, publisher *publisher.Publisher, consumer *consumer.Consumer) func(context.Context) error {
+func onStart(logger *slog.Logger, publisher PublisherInterface, consumer ConsumerInterface) func(context.Context) error {
 	return func(ctx context.Context) (err error) {
 		if err = ctx.Err(); err != nil {
 			return err
@@ -121,7 +132,7 @@ func onStart(logger *slog.Logger, publisher *publisher.Publisher, consumer *cons
 	}
 }
 
-func onStop(logger *slog.Logger, publisher *publisher.Publisher, consumer *consumer.Consumer) func(context.Context) error {
+func onStop(logger *slog.Logger, publisher PublisherInterface, consumer ConsumerInterface) func(context.Context) error {
 	return func(ctx context.Context) error {
 		logger.Info("stopping services")
 

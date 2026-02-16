@@ -251,17 +251,7 @@ func TestProvideLogger(t *testing.T) {
 	}
 }
 
-// Mock interfaces for testing - these wrap the concrete types for testing purposes
-type PublisherInterface interface {
-	Start() error
-	Stop(ctx context.Context) error
-}
-
-type ConsumerInterface interface {
-	Start() error
-	Stop(ctx context.Context) error
-}
-
+// Mock implementations for testing
 type MockPublisher struct {
 	mock.Mock
 }
@@ -288,62 +278,6 @@ func (m *MockConsumer) Start() error {
 func (m *MockConsumer) Stop(ctx context.Context) error {
 	args := m.Called(ctx)
 	return args.Error(0)
-}
-
-// Test helper functions that work with interfaces
-func testOnStart(logger *slog.Logger, pub PublisherInterface, con ConsumerInterface) func(context.Context) error {
-	return func(ctx context.Context) (err error) {
-		if err = ctx.Err(); err != nil {
-			return err
-		}
-
-		// Start the publisher first (required by consumer)
-		if err = pub.Start(); err != nil {
-			logger.Error("failed to start publisher", "error", err)
-			return err
-		}
-		logger.Info("publisher started successfully")
-
-		// Start the consumer
-		if err = con.Start(); err != nil {
-			logger.Error("failed to start consumer", "error", err)
-			// Stop the publisher if consumer fails to start
-			if stopErr := pub.Stop(ctx); stopErr != nil {
-				logger.Error("failed to stop publisher during cleanup", "error", stopErr)
-			}
-			return err
-		}
-
-		logger.Info("consumer started successfully")
-		return nil
-	}
-}
-
-func testOnStop(logger *slog.Logger, pub PublisherInterface, con ConsumerInterface) func(context.Context) error {
-	return func(ctx context.Context) error {
-		logger.Info("stopping services")
-
-		// Create a timeout context for the shutdown
-		shutdownCtx, cancel := context.WithTimeout(ctx, 60*time.Second)
-		defer cancel()
-
-		// Stop the consumer first
-		if err := con.Stop(shutdownCtx); err != nil {
-			logger.Error("error stopping consumer", "error", err)
-			// Continue to stop publisher even if consumer fails
-		} else {
-			logger.Info("consumer stopped successfully")
-		}
-
-		// Stop the publisher
-		if err := pub.Stop(shutdownCtx); err != nil {
-			logger.Error("error stopping publisher", "error", err)
-			return err
-		}
-
-		logger.Info("publisher stopped successfully")
-		return nil
-	}
 }
 
 // Provider function tests
@@ -555,7 +489,7 @@ func TestCoreModule(t *testing.T) {
 	assert.NotNil(t, option, "CoreModule should return a non-nil fx.Option")
 }
 
-// Comprehensive tests for onStart function covering all edge cases and scenarios
+// Comprehensive tests for onStart function
 func TestOnStart(t *testing.T) {
 	testCases := []struct {
 		name           string
@@ -567,7 +501,7 @@ func TestOnStart(t *testing.T) {
 		verifyBehavior func(t *testing.T, mockPub *MockPublisher, mockCon *MockConsumer, err error)
 		shouldPanic    bool
 	}{
-		// Basic success cases (from original suite test)
+		// Basic success cases
 		{
 			name: "Success",
 			setupContext: func() (context.Context, context.CancelFunc) {
@@ -739,7 +673,7 @@ func TestOnStart(t *testing.T) {
 				defer cancel()
 
 				tc.setupMocks(mockPub, mockCon)
-				onStartFunc := testOnStart(logger, mockPub, mockCon)
+				onStartFunc := onStart(logger, mockPub, mockCon)
 
 				// Expect panic
 				assert.Panics(t, func() {
@@ -758,7 +692,7 @@ func TestOnStart(t *testing.T) {
 			defer cancel()
 
 			tc.setupMocks(mockPub, mockCon)
-			onStartFunc := testOnStart(logger, mockPub, mockCon)
+			onStartFunc := onStart(logger, mockPub, mockCon)
 
 			// Execute
 			err := onStartFunc(ctx)
@@ -928,9 +862,7 @@ consumer:
 	}
 }
 
-// Test provideCLIWithOpts function more comprehensively
-// Test provideCLI function that wraps provideCLIWithOpts
-// Test constants and variables
+// Test provideCLIWithOpts function
 func TestConstants(t *testing.T) {
 	assert.Equal(t, "splitter", applicationName, "Application name should be 'splitter'")
 
@@ -941,7 +873,7 @@ func TestConstants(t *testing.T) {
 	assert.NotEmpty(t, builtBy, "BuiltBy should be set")
 }
 
-// Comprehensive tests for onStop function covering all edge cases and scenarios
+// Comprehensive tests for onStop function
 func TestOnStop(t *testing.T) {
 	testCases := []struct {
 		name           string
@@ -953,7 +885,7 @@ func TestOnStop(t *testing.T) {
 		verifyBehavior func(t *testing.T, mockPub *MockPublisher, mockCon *MockConsumer, err error)
 		shouldPanic    bool
 	}{
-		// Basic success cases (from original suite test)
+		// Basic success cases
 		{
 			name: "Success",
 			setupContext: func() (context.Context, context.CancelFunc) {
@@ -1155,7 +1087,7 @@ func TestOnStop(t *testing.T) {
 				defer cancel()
 
 				tc.setupMocks(mockPub, mockCon)
-				onStopFunc := testOnStop(logger, mockPub, mockCon)
+				onStopFunc := onStop(logger, mockPub, mockCon)
 
 				// Expect panic
 				assert.Panics(t, func() {
@@ -1174,7 +1106,7 @@ func TestOnStop(t *testing.T) {
 			defer cancel()
 
 			tc.setupMocks(mockPub, mockCon)
-			onStopFunc := testOnStop(logger, mockPub, mockCon)
+			onStopFunc := onStop(logger, mockPub, mockCon)
 
 			// Execute
 			err := onStopFunc(ctx)
