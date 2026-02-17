@@ -13,8 +13,8 @@ import (
 // TODO - make the hash algorithm configurable, but not yet a requirement
 
 // this file determines whether or not a wrp.Message should be published to a target bucket.
-// A splitter will only be configured to write to one bucket.  Messages destined for
-// other buckets (regions) will be dropped.
+// A splitter will only be configured to write to one "bucket".  Messages destined for
+// other buckets (in this case, regions) will be dropped.
 
 type KeyType int
 
@@ -26,19 +26,34 @@ const (
 	DeviceIdKeyName = "device_id"
 )
 
-type Buckets struct {
-	targetBucketIndex int32
-	partitioner       Partitioner
-	partitionKeyType  KeyType
-	numBuckets        int32
+type Bucket struct {
+	name      string
+	threshold float32
 }
 
-func NewBuckets(targetBucket string, buckets []string, keyType string) (Buckets, error) {
-	// sort buckets slice in alphabetical order
-	sort.Strings(buckets)
+type Buckets struct {
+	targetBucketIndex int
+	partitioner       Partitioner
+	partitionKeyType  KeyType
+	buckets           []Bucket
+	thresholds        []float32
+}
+
+func NewBuckets(targetBucket string, buckets []Bucket, keyType string) (Buckets, error) {
+	// sort buckets slice in order of threshold ascending
+	sort.Slice(buckets, func(i, j int) bool {
+		return buckets[i].threshold < buckets[j].threshold
+	})
+
+	// for convenience, extract ordered thresholds for partitioner
+	thresholds := make([]float32, len(buckets))
+	for i, bucket := range buckets {
+		thresholds[i] = bucket.threshold
+	}
 
 	// create the partitioner
 	partition := NewPartitioner()
+
 	// set the index for the target bucket
 	targetBucketIndex, err := getTargetIndex(targetBucket, buckets)
 	if err != nil {
@@ -53,14 +68,15 @@ func NewBuckets(targetBucket string, buckets []string, keyType string) (Buckets,
 
 	return Buckets{
 		partitioner:       partition,
-		targetBucketIndex: int32(targetBucketIndex),
-		numBuckets:        int32(len(buckets)),
+		targetBucketIndex: targetBucketIndex,
+		buckets:           buckets,
+		thresholds:        thresholds,
 		partitionKeyType:  partitionKeyType}, nil
 }
 
-func getTargetIndex(targetBucket string, buckets []string) (int, error) {
+func getTargetIndex(targetBucket string, buckets []Bucket) (int, error) {
 	for i, bucket := range buckets {
-		if bucket == targetBucket {
+		if bucket.name == targetBucket {
 			return i, nil
 		}
 	}
@@ -73,7 +89,7 @@ func (r *Buckets) ShouldPublish(msg *wrp.Message) bool {
 	if err != nil {
 		return false
 	}
-	bucket, err := r.partitioner.Partition(partitionKey, r.numBuckets)
+	bucket, err := r.partitioner.Partition(partitionKey, r.thresholds)
 	if err != nil {
 		return false
 	}

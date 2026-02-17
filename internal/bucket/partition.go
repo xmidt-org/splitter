@@ -6,8 +6,9 @@ import (
 	"github.com/aviddiviner/go-murmur"
 )
 
-// this is just abstract buckets to determine which cluster / region to go to,
-// not really anything to do with actual Kafka partitioning
+// specifies a bucket based on key and number of partitions / buckets.
+// TODO - the seed is kafka specific, do we need this since this is not
+// directly related to kafka partitioning?
 type Partitioner struct{}
 
 // NewPartitionerConstructor returns a PartitionerConstructor that selects Murmur2 for topic with
@@ -16,21 +17,31 @@ func NewPartitioner() Partitioner {
 	return Partitioner{}
 }
 
-func (p *Partitioner) Partition(key string, numPartitions int32) (int32, error) {
-	const seed uint32 = 0x9747b28c // do we need this seed since it is kafka specific?
-	// these records are thrown out later, anyway
+func (p *Partitioner) Partition(key string, thresholds []float32) (int, error) {
+	const seed uint32 = 0x9747b28c
 	if key == "" {
-		return 0, errors.New("no key specified for bucket")
+		return 0, errors.New("no bucket key specified")
+	}
+	if len(thresholds) == 0 {
+		return 0, errors.New("no thresholds provided")
 	}
 	bytes := []byte(key)
-
 	hash := murmur.MurmurHash2(bytes, seed)
-	part := toPositive(hash) % numPartitions
-	return part, nil
+	// Convert hash to float in [0,1)
+	hashFloat := float32(toPositive(hash)) / float32(0x7fffffff)
+	for i, threshold := range thresholds {
+		if hashFloat < threshold {
+			return i, nil
+		}
+	}
+	// If not less than any threshold, assign to last bucket
+	return len(thresholds) - 1, nil
 }
 
+// TODO - do we need to be compatible with kafka here? Outstanding question to xdp
 // toPositive returns positive value as in Java Kafka client:
 // https://github.com/apache/kafka/blob/1.0.0/clients/src/main/java/org/apache/kafka/common/utils/Utils.java#L728
 func toPositive(n uint32) int32 {
+	// #nosec G115 -- conversion is safe and intentional for Kafka compatibility
 	return int32(n) & 0x7fffffff
 }
