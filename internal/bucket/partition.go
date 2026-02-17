@@ -9,13 +9,12 @@ import (
 	"github.com/aviddiviner/go-murmur"
 )
 
-// specifies a bucket based on key and number of partitions / buckets.
+// specifies a partition based on key and number of partitions / buckets.
 // TODO - the seed is kafka specific, do we need this since this is not
 // directly related to kafka partitioning?
+
 type Partitioner struct{}
 
-// NewPartitionerConstructor returns a PartitionerConstructor that selects Murmur2 for topic with
-// prefix with any of the murmur2topics, otherwise uses default Sarama HashParitition for others.
 func NewPartitioner() Partitioner {
 	return Partitioner{}
 }
