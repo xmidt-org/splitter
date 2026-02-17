@@ -26,9 +26,17 @@ const (
 	DeviceIdKeyName = "device_id"
 )
 
+type Config struct {
+	TargetBucket    string
+	PossibleBuckets []Bucket
+
+	// partition key type determines which field of the message is used for hashing to a bucket
+	PartitionKeyType string
+}
+
 type Bucket struct {
-	name      string
-	threshold float32
+	Name      string
+	Threshold float32
 }
 
 type Buckets struct {
@@ -39,29 +47,29 @@ type Buckets struct {
 	thresholds        []float32
 }
 
-func NewBuckets(targetBucket string, buckets []Bucket, keyType string) (Buckets, error) {
-	// sort buckets slice in order of threshold ascending
-	sort.Slice(buckets, func(i, j int) bool {
-		return buckets[i].threshold < buckets[j].threshold
+func NewBuckets(config Config) (Buckets, error) {
+	// sort buckets slice in order of threshold, ascending
+	sort.Slice(config.PossibleBuckets, func(i, j int) bool {
+		return config.PossibleBuckets[i].Threshold < config.PossibleBuckets[j].Threshold
 	})
 
-	// for convenience, extract ordered thresholds for partitioner
-	thresholds := make([]float32, len(buckets))
-	for i, bucket := range buckets {
-		thresholds[i] = bucket.threshold
+	// for convenience, extract ordered thresholds for the partitioner
+	thresholds := make([]float32, len(config.PossibleBuckets))
+	for i, bucket := range config.PossibleBuckets {
+		thresholds[i] = bucket.Threshold
 	}
 
 	// create the partitioner
 	partition := NewPartitioner()
 
 	// set the index for the target bucket
-	targetBucketIndex, err := getTargetIndex(targetBucket, buckets)
+	targetBucketIndex, err := getTargetIndex(config.TargetBucket, config.PossibleBuckets)
 	if err != nil {
 		return Buckets{}, err
 	}
 
 	// set the bucket key type
-	partitionKeyType, err := getPartitionKeyType(keyType)
+	partitionKeyType, err := getPartitionKeyType(config.PartitionKeyType)
 	if err != nil {
 		return Buckets{}, err
 	}
@@ -69,22 +77,22 @@ func NewBuckets(targetBucket string, buckets []Bucket, keyType string) (Buckets,
 	return Buckets{
 		partitioner:       partition,
 		targetBucketIndex: targetBucketIndex,
-		buckets:           buckets,
+		buckets:           config.PossibleBuckets,
 		thresholds:        thresholds,
 		partitionKeyType:  partitionKeyType}, nil
 }
 
 func getTargetIndex(targetBucket string, buckets []Bucket) (int, error) {
 	for i, bucket := range buckets {
-		if bucket.name == targetBucket {
+		if bucket.Name == targetBucket {
 			return i, nil
 		}
 	}
 	return -1, fmt.Errorf("target bucket %s not found", targetBucket)
 }
 
-// only process messages that hash to the target bucket
-func (r *Buckets) ShouldPublish(msg *wrp.Message) bool {
+// determine if message hashes to the target bucket
+func (r *Buckets) IsInTargetBucket(msg *wrp.Message) bool {
 	partitionKey, err := r.getPartitionKey(msg)
 	if err != nil {
 		return false

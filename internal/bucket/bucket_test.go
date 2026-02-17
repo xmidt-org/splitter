@@ -23,8 +23,13 @@ func (s *BucketsSuite) SetupTest() {
 		{"bucketB", 0.66},
 		{"bucketC", 1.0},
 	}
+	cfg := Config{
+		TargetBucket:     "bucketB",
+		PossibleBuckets:  s.bucketDefs,
+		PartitionKeyType: DeviceIdKeyName,
+	}
 	var err error
-	s.buckets, err = NewBuckets("bucketB", s.bucketDefs, DeviceIdKeyName)
+	s.buckets, err = NewBuckets(cfg)
 	s.Require().NoError(err)
 }
 
@@ -35,12 +40,22 @@ func (s *BucketsSuite) TestNewBuckets_TargetIndex() {
 }
 
 func (s *BucketsSuite) TestNewBuckets_InvalidTarget() {
-	_, err := NewBuckets("notfound", s.bucketDefs, DeviceIdKeyName)
+	cfg := Config{
+		TargetBucket:     "notfound",
+		PossibleBuckets:  s.bucketDefs,
+		PartitionKeyType: DeviceIdKeyName,
+	}
+	_, err := NewBuckets(cfg)
 	assert.Error(s.T(), err)
 }
 
 func (s *BucketsSuite) TestNewBuckets_InvalidKeyType() {
-	_, err := NewBuckets("bucketA", s.bucketDefs, "unknown_key")
+	cfg := Config{
+		TargetBucket:     "bucketA",
+		PossibleBuckets:  s.bucketDefs,
+		PartitionKeyType: "unknown_key",
+	}
+	_, err := NewBuckets(cfg)
 	assert.Error(s.T(), err)
 }
 
@@ -50,7 +65,7 @@ func (s *BucketsSuite) TestShouldPublish_True() {
 	partitioner := NewPartitioner()
 	bucket, _ := partitioner.Partition(partitionKey, s.buckets.thresholds)
 	s.buckets.targetBucketIndex = bucket
-	assert.True(s.T(), s.buckets.ShouldPublish(msg))
+	assert.True(s.T(), s.buckets.IsInTargetBucket(msg))
 }
 
 func (s *BucketsSuite) TestShouldPublish_False() {
@@ -59,12 +74,12 @@ func (s *BucketsSuite) TestShouldPublish_False() {
 	partitioner := NewPartitioner()
 	bucket, _ := partitioner.Partition(partitionKey, s.buckets.thresholds)
 	s.buckets.targetBucketIndex = (bucket + 1) % len(s.buckets.thresholds)
-	assert.False(s.T(), s.buckets.ShouldPublish(msg))
+	assert.False(s.T(), s.buckets.IsInTargetBucket(msg))
 }
 
 func (s *BucketsSuite) TestShouldPublish_InvalidKey() {
 	msg := &wrp.Message{Source: "invalid"}
-	assert.False(s.T(), s.buckets.ShouldPublish(msg))
+	assert.False(s.T(), s.buckets.IsInTargetBucket(msg))
 }
 
 func (s *BucketsSuite) TestGetPartitionKey_DeviceId() {

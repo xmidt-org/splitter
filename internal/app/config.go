@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 
+	"xmidt-org/splitter/internal/bucket"
 	"xmidt-org/splitter/internal/configuration"
 	"xmidt-org/splitter/internal/consumer"
 
@@ -34,6 +35,7 @@ type Config struct {
 	PrometheusHandler touchhttp.Config
 	Servers           Servers
 	Consumer          consumer.Config
+	Buckets           bucket.Config
 }
 
 type Servers struct {
