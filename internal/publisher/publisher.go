@@ -23,9 +23,16 @@ var (
 	ErrPublisherAlreadyStarted = errors.New("publisher is already started")
 )
 
+// Interface for dependency injection and testing
+type Publisher interface {
+	Produce(ctx context.Context, msg *wrp.Message) (wrpkafka.Outcome, error)
+	Start() error
+	Stop(ctx context.Context) error
+}
+
 // Publisher implements the publisher using wrpkafka.
 // It manages the publisher lifecycle, message production, and graceful shutdown.
-type Publisher struct {
+type KafkaPublisher struct {
 	wrpPublisher  *wrpkafka.Publisher
 	config        *publisherConfig
 	logger        *slog.Logger
@@ -36,11 +43,11 @@ type Publisher struct {
 	started bool
 }
 
-// New creates a new Publisher with the provided options.
+// New creates a new KafkaPublisher with the provided options.
 // Required options: WithBrokers, WithTopicRoutes
-func New(opts ...Option) (*Publisher, error) {
+func New(opts ...Option) (*KafkaPublisher, error) {
 	// Create publisher with initial config
-	publisher := &Publisher{
+	publisher := &KafkaPublisher{
 		config:        &publisherConfig{},
 		logger:        slog.Default(),
 		logEmitter:    log.NewNoop(),
@@ -84,7 +91,7 @@ func New(opts ...Option) (*Publisher, error) {
 
 // Start initializes and starts the publisher.
 // This must be called before producing messages.
-func (p *Publisher) Start() error {
+func (p *KafkaPublisher) Start() error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
@@ -106,7 +113,7 @@ func (p *Publisher) Start() error {
 }
 
 // Stop shuts down the publisher.
-func (p *Publisher) Stop(ctx context.Context) error {
+func (p *KafkaPublisher) Stop(ctx context.Context) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
@@ -121,7 +128,7 @@ func (p *Publisher) Stop(ctx context.Context) error {
 	return nil
 }
 
-func (p *Publisher) IsStarted() bool {
+func (p *KafkaPublisher) IsStarted() bool {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 	return p.started
@@ -129,7 +136,7 @@ func (p *Publisher) IsStarted() bool {
 
 // Produce sends a WRP message to the appropriate Kafka topic based on routing rules.
 // Returns the outcome of the produce operation and any error encountered.
-func (p *Publisher) Produce(ctx context.Context, msg *wrp.Message) (wrpkafka.Outcome, error) {
+func (p *KafkaPublisher) Produce(ctx context.Context, msg *wrp.Message) (wrpkafka.Outcome, error) {
 	p.mu.RLock()
 	started := p.started
 	p.mu.RUnlock()

@@ -25,7 +25,7 @@ type PublisherIn struct {
 // PublisherOut contains the created publisher instance.
 type PublisherOut struct {
 	fx.Out
-	Publisher *publisher.Publisher
+	Publisher publisher.Publisher
 }
 
 // providePublisher creates a new Kafka publisher instance with options from the config file
@@ -66,5 +66,7 @@ func providePublisher(in PublisherIn) (PublisherOut, error) {
 		return PublisherOut{}, fmt.Errorf("failed to create publisher: %w", err)
 	}
 
-	return PublisherOut{Publisher: pub}, nil
+	return PublisherOut{
+		Publisher: pub,
+	}, nil
 }

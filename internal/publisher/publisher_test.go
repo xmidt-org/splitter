@@ -302,14 +302,14 @@ func (suite *PublisherTestSuite) TestConcurrentIsStarted() {
 func (suite *PublisherTestSuite) TestStart() {
 	tests := []struct {
 		name           string
-		setupPublisher func() *Publisher
+		setupPublisher func() *KafkaPublisher
 		expectError    bool
 		errorType      error
 		description    string
 	}{
 		{
 			name: "start_already_started_publisher",
-			setupPublisher: func() *Publisher {
+			setupPublisher: func() *KafkaPublisher {
 				p, _ := New(
 					WithBrokers("localhost:9092"),
 					WithTopicRoutes(wrpkafka.TopicRoute{Topic: "test", Pattern: ".*"}),
@@ -347,12 +347,12 @@ func (suite *PublisherTestSuite) TestStart() {
 func (suite *PublisherTestSuite) TestStop() {
 	tests := []struct {
 		name           string
-		setupPublisher func() *Publisher
+		setupPublisher func() *KafkaPublisher
 		description    string
 	}{
 		{
 			name: "stop_not_started_publisher",
-			setupPublisher: func() *Publisher {
+			setupPublisher: func() *KafkaPublisher {
 				p, _ := New(
 					WithBrokers("localhost:9092"),
 					WithTopicRoutes(wrpkafka.TopicRoute{Topic: "test", Pattern: ".*"}),
@@ -364,7 +364,7 @@ func (suite *PublisherTestSuite) TestStop() {
 		},
 		{
 			name: "stop_started_publisher",
-			setupPublisher: func() *Publisher {
+			setupPublisher: func() *KafkaPublisher {
 				p, _ := New(
 					WithBrokers("localhost:9092"),
 					WithTopicRoutes(wrpkafka.TopicRoute{Topic: "test", Pattern: ".*"}),
@@ -395,14 +395,14 @@ func (suite *PublisherTestSuite) TestStop() {
 func (suite *PublisherTestSuite) TestEventEmission() {
 	tests := []struct {
 		name          string
-		operation     func(*Publisher) error
+		operation     func(*KafkaPublisher) error
 		expectLogs    int
 		expectMetrics int
 		description   string
 	}{
 		{
 			name: "produce_not_started_emits_metrics",
-			operation: func(p *Publisher) error {
+			operation: func(p *KafkaPublisher) error {
 				message := &wrp.Message{
 					Type:   wrp.SimpleEventMessageType,
 					Source: "test",
@@ -551,13 +551,13 @@ func (suite *PublisherTestSuite) TestProduceMessageTypes() {
 func (suite *PublisherTestSuite) TestEdgeCases() {
 	tests := []struct {
 		name        string
-		setupTest   func() (*Publisher, *wrp.Message, context.Context)
+		setupTest   func() (*KafkaPublisher, *wrp.Message, context.Context)
 		expectError bool
 		description string
 	}{
 		{
 			name: "produce_with_nil_message",
-			setupTest: func() (*Publisher, *wrp.Message, context.Context) {
+			setupTest: func() (*KafkaPublisher, *wrp.Message, context.Context) {
 				p, _ := New(
 					WithBrokers("localhost:9092"),
 					WithTopicRoutes(wrpkafka.TopicRoute{Topic: "test", Pattern: ".*"}),
@@ -569,7 +569,7 @@ func (suite *PublisherTestSuite) TestEdgeCases() {
 		},
 		{
 			name: "produce_with_cancelled_context",
-			setupTest: func() (*Publisher, *wrp.Message, context.Context) {
+			setupTest: func() (*KafkaPublisher, *wrp.Message, context.Context) {
 				p, _ := New(
 					WithBrokers("localhost:9092"),
 					WithTopicRoutes(wrpkafka.TopicRoute{Topic: "test", Pattern: ".*"}),
@@ -589,7 +589,7 @@ func (suite *PublisherTestSuite) TestEdgeCases() {
 		},
 		{
 			name: "produce_with_empty_message_fields",
-			setupTest: func() (*Publisher, *wrp.Message, context.Context) {
+			setupTest: func() (*KafkaPublisher, *wrp.Message, context.Context) {
 				p, _ := New(
 					WithBrokers("localhost:9092"),
 					WithTopicRoutes(wrpkafka.TopicRoute{Topic: "test", Pattern: ".*"}),

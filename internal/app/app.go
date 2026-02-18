@@ -14,17 +14,6 @@ import (
 	"go.uber.org/fx"
 )
 
-// Interfaces for dependency injection and testing
-type PublisherInterface interface {
-	Start() error
-	Stop(ctx context.Context) error
-}
-
-type ConsumerInterface interface {
-	Start() error
-	Stop(ctx context.Context) error
-}
-
 // builds the standalone service
 
 const (
@@ -52,8 +41,8 @@ type LifeCycleIn struct {
 	fx.In
 	Logger    *slog.Logger
 	LC        fx.Lifecycle
-	Publisher *publisher.Publisher
-	Consumer  *consumer.Consumer
+	Publisher publisher.Publisher
+	Consumer  consumer.Consumer
 }
 
 // WrpKafkaRouter is the main entry point for the program.  It is responsible for
@@ -104,7 +93,7 @@ func CoreModule() fx.Option {
 	)
 }
 
-func onStart(logger *slog.Logger, publisher PublisherInterface, consumer ConsumerInterface) func(context.Context) error {
+func onStart(logger *slog.Logger, publisher publisher.Publisher, consumer consumer.Consumer) func(context.Context) error {
 	return func(ctx context.Context) (err error) {
 		if err = ctx.Err(); err != nil {
 			return err
@@ -132,7 +121,7 @@ func onStart(logger *slog.Logger, publisher PublisherInterface, consumer Consume
 	}
 }
 
-func onStop(logger *slog.Logger, publisher PublisherInterface, consumer ConsumerInterface) func(context.Context) error {
+func onStop(logger *slog.Logger, publisher publisher.Publisher, consumer consumer.Consumer) func(context.Context) error {
 	return func(ctx context.Context) error {
 		logger.Info("stopping services")
 

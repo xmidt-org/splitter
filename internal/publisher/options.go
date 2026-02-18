@@ -27,16 +27,16 @@ var (
 	ErrMissingTopicRoutes = errors.New("topic routes cannot be empty")
 )
 
-// Option is a functional option for configuring a Publisher.
+// Option is a functional option for configuring a KafkaPublisher.
 type Option interface {
-	apply(*Publisher) error
+	apply(*KafkaPublisher) error
 }
 
-type optionFunc func(*Publisher) error
+type optionFunc func(*KafkaPublisher) error
 
 var _ Option = optionFunc(nil)
 
-func (f optionFunc) apply(p *Publisher) error {
+func (f optionFunc) apply(p *KafkaPublisher) error {
 	return f(p)
 }
 
@@ -72,7 +72,7 @@ func (c *publisherConfig) validate() error {
 
 // WithBrokers sets the Kafka broker addresses.
 func WithBrokers(brokers ...string) Option {
-	return optionFunc(func(p *Publisher) error {
+	return optionFunc(func(p *KafkaPublisher) error {
 		p.config.brokers = brokers
 		return nil
 	})
@@ -80,7 +80,7 @@ func WithBrokers(brokers ...string) Option {
 
 // WithTopicRoutes sets the WRP topic routing rules.
 func WithTopicRoutes(routes ...wrpkafka.TopicRoute) Option {
-	return optionFunc(func(p *Publisher) error {
+	return optionFunc(func(p *KafkaPublisher) error {
 		p.config.topicRoutes = routes
 		return nil
 	})
@@ -88,7 +88,7 @@ func WithTopicRoutes(routes ...wrpkafka.TopicRoute) Option {
 
 // WithLogger sets the logger for the publisher.
 func WithLogger(logger *slog.Logger) Option {
-	return optionFunc(func(p *Publisher) error {
+	return optionFunc(func(p *KafkaPublisher) error {
 		if logger != nil {
 			p.logger = logger
 		}
@@ -98,7 +98,7 @@ func WithLogger(logger *slog.Logger) Option {
 
 // WithLogEmitter sets the log event emitter.
 func WithLogEmitter(emitter *observe.Subject[log.Event]) Option {
-	return optionFunc(func(p *Publisher) error {
+	return optionFunc(func(p *KafkaPublisher) error {
 		if emitter != nil {
 			p.logEmitter = emitter
 		}
@@ -108,7 +108,7 @@ func WithLogEmitter(emitter *observe.Subject[log.Event]) Option {
 
 // WithMetricsEmitter sets the metrics event emitter.
 func WithMetricsEmitter(emitter *observe.Subject[metrics.Event]) Option {
-	return optionFunc(func(p *Publisher) error {
+	return optionFunc(func(p *KafkaPublisher) error {
 		if emitter != nil {
 			p.metricEmitter = emitter
 		}
@@ -118,7 +118,7 @@ func WithMetricsEmitter(emitter *observe.Subject[metrics.Event]) Option {
 
 // WithKafkaLogger sets the kafka client logger.
 func WithKafkaLogger(logger kgo.Logger) Option {
-	return optionFunc(func(p *Publisher) error {
+	return optionFunc(func(p *KafkaPublisher) error {
 		if logger != nil {
 			p.config.logger = logger
 		}
@@ -128,7 +128,7 @@ func WithKafkaLogger(logger kgo.Logger) Option {
 
 // WithMaxBufferedRecords sets the maximum number of records to buffer.
 func WithMaxBufferedRecords(maxRecords int) Option {
-	return optionFunc(func(p *Publisher) error {
+	return optionFunc(func(p *KafkaPublisher) error {
 		p.config.maxBufferedRecords = maxRecords
 		return nil
 	})
@@ -136,7 +136,7 @@ func WithMaxBufferedRecords(maxRecords int) Option {
 
 // WithMaxBufferedBytes sets the maximum bytes of records to buffer.
 func WithMaxBufferedBytes(maxBytes int) Option {
-	return optionFunc(func(p *Publisher) error {
+	return optionFunc(func(p *KafkaPublisher) error {
 		p.config.maxBufferedBytes = maxBytes
 		return nil
 	})
@@ -144,7 +144,7 @@ func WithMaxBufferedBytes(maxBytes int) Option {
 
 // WithRequestTimeout sets the maximum time to wait for broker responses.
 func WithRequestTimeout(timeout time.Duration) Option {
-	return optionFunc(func(p *Publisher) error {
+	return optionFunc(func(p *KafkaPublisher) error {
 		p.config.requestTimeout = timeout
 		return nil
 	})
@@ -152,7 +152,7 @@ func WithRequestTimeout(timeout time.Duration) Option {
 
 // WithCleanupTimeout sets the maximum time to wait for buffered messages to flush on shutdown.
 func WithCleanupTimeout(timeout time.Duration) Option {
-	return optionFunc(func(p *Publisher) error {
+	return optionFunc(func(p *KafkaPublisher) error {
 		p.config.cleanupTimeout = timeout
 		return nil
 	})
@@ -160,7 +160,7 @@ func WithCleanupTimeout(timeout time.Duration) Option {
 
 // WithMaxRetries sets the number of retries for failed requests.
 func WithMaxRetries(retries int) Option {
-	return optionFunc(func(p *Publisher) error {
+	return optionFunc(func(p *KafkaPublisher) error {
 		p.config.maxRetries = retries
 		return nil
 	})
@@ -168,7 +168,7 @@ func WithMaxRetries(retries int) Option {
 
 // WithAllowAutoTopicCreation enables automatic topic creation.
 func WithAllowAutoTopicCreation(allow bool) Option {
-	return optionFunc(func(p *Publisher) error {
+	return optionFunc(func(p *KafkaPublisher) error {
 		p.config.allowAutoTopicCreation = allow
 		return nil
 	})
@@ -176,7 +176,7 @@ func WithAllowAutoTopicCreation(allow bool) Option {
 
 // WithSASLConfig configures SASL authentication.
 func WithSASLConfig(saslConfig *SASLConfig) Option {
-	return optionFunc(func(p *Publisher) error {
+	return optionFunc(func(p *KafkaPublisher) error {
 		if saslConfig == nil {
 			return nil
 		}
@@ -213,7 +213,7 @@ func WithSASLConfig(saslConfig *SASLConfig) Option {
 
 // WithTLSConfig configures TLS encryption.
 func WithTLSConfig(tlsConfig *TLSConfig) Option {
-	return optionFunc(func(p *Publisher) error {
+	return optionFunc(func(p *KafkaPublisher) error {
 		if tlsConfig == nil || !tlsConfig.Enabled {
 			return nil
 		}
@@ -252,7 +252,7 @@ func WithTLSConfig(tlsConfig *TLSConfig) Option {
 
 // WithPublishEventListener adds a publish event listener.
 func WithPublishEventListener(listener func(*wrpkafka.PublishEvent)) Option {
-	return optionFunc(func(p *Publisher) error {
+	return optionFunc(func(p *KafkaPublisher) error {
 		if listener != nil {
 			p.config.publishEventListeners = append(p.config.publishEventListeners, listener)
 		}

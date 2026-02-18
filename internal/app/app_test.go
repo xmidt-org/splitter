@@ -25,6 +25,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"github.com/xmidt-org/wrp-go/v5"
+	"github.com/xmidt-org/wrpkafka"
 )
 
 // Comprehensive tests for CLI provider functions
@@ -266,6 +268,11 @@ func (m *MockPublisher) Stop(ctx context.Context) error {
 	return args.Error(0)
 }
 
+func (m *MockPublisher) Produce(ctx context.Context, msg *wrp.Message) (wrpkafka.Outcome, error) {
+	args := m.Called(ctx, msg)
+	return args.Get(0).(wrpkafka.Outcome), args.Error(1)
+}
+
 type MockConsumer struct {
 	mock.Mock
 }
@@ -278,6 +285,11 @@ func (m *MockConsumer) Start() error {
 func (m *MockConsumer) Stop(ctx context.Context) error {
 	args := m.Called(ctx)
 	return args.Error(0)
+}
+
+func (m *MockConsumer) IsRunning() bool {
+	args := m.Called()
+	return args.Bool(0)
 }
 
 // Provider function tests
@@ -365,7 +377,7 @@ func TestProvidePublisher(t *testing.T) {
 
 func TestProvideConsumer(t *testing.T) {
 	// Helper function to create a valid publisher for testing
-	createValidPublisher := func() *publisher.Publisher {
+	createValidKafkaPublisher := func() *publisher.KafkaPublisher {
 		logEmitter := observe.NewSubject[log.Event]()
 		metricEmitter := observe.NewSubject[metrics.Event]()
 
@@ -414,7 +426,7 @@ func TestProvideConsumer(t *testing.T) {
 						FetchMaxBytes:     1024 * 1024,
 						FetchMaxWait:      500 * time.Millisecond,
 					},
-					Publisher:     createValidPublisher(),
+					Publisher:     createValidKafkaPublisher(),
 					LogEmitter:    logEmitter,
 					MetricEmitter: metricEmitter,
 				}
@@ -434,7 +446,7 @@ func TestProvideConsumer(t *testing.T) {
 						Topics:  []string{}, // Empty topics should cause validation error
 						GroupID: "splitter-group",
 					},
-					Publisher:     createValidPublisher(),
+					Publisher:     createValidKafkaPublisher(),
 					LogEmitter:    logEmitter,
 					MetricEmitter: metricEmitter,
 				}

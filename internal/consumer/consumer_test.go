@@ -111,7 +111,7 @@ func (s *ConsumerTestSuite) TestNew_WithOptionalOptions() {
 
 // TestConsumer_IsRunning tests the IsRunning method
 func (s *ConsumerTestSuite) TestConsumer_IsRunning() {
-	c := &Consumer{}
+	c := &KafkaConsumer{}
 	s.False(c.IsRunning())
 
 	c.mu.Lock()
@@ -123,7 +123,7 @@ func (s *ConsumerTestSuite) TestConsumer_IsRunning() {
 
 // TestConsumer_Start_Success tests successful consumer start
 func (s *ConsumerTestSuite) TestConsumer_Start_Success() {
-	c := &Consumer{
+	c := &KafkaConsumer{
 		client:  s.mock,
 		handler: s.handler,
 		config:  &consumerConfig{},
@@ -148,7 +148,7 @@ func (s *ConsumerTestSuite) TestConsumer_Start_Success() {
 
 // TestConsumer_Start_AlreadyRunning tests starting an already running consumer
 func (s *ConsumerTestSuite) TestConsumer_Start_AlreadyRunning() {
-	c := &Consumer{
+	c := &KafkaConsumer{
 		client:  s.mock,
 		handler: s.handler,
 		config:  &consumerConfig{},
@@ -173,7 +173,7 @@ func (s *ConsumerTestSuite) TestConsumer_Start_PingFailure() {
 		return errors.New("ping failed")
 	}
 
-	c := &Consumer{
+	c := &KafkaConsumer{
 		client:  s.mock,
 		handler: s.handler,
 		config:  &consumerConfig{},
@@ -189,7 +189,7 @@ func (s *ConsumerTestSuite) TestConsumer_Start_PingFailure() {
 
 // TestConsumer_Stop tests graceful consumer shutdown
 func (s *ConsumerTestSuite) TestConsumer_Stop() {
-	c := &Consumer{
+	c := &KafkaConsumer{
 		client:  s.mock,
 		handler: s.handler,
 		config:  &consumerConfig{},
@@ -213,7 +213,7 @@ func (s *ConsumerTestSuite) TestConsumer_Stop() {
 
 // TestConsumer_Stop_NotRunning tests stopping a non-running consumer
 func (s *ConsumerTestSuite) TestConsumer_Stop_NotRunning() {
-	c := &Consumer{
+	c := &KafkaConsumer{
 		client:  s.mock,
 		handler: s.handler,
 		config:  &consumerConfig{},
@@ -240,7 +240,7 @@ func (s *ConsumerTestSuite) TestConsumer_HandleRecord_Success() {
 		return nil
 	})
 
-	c := &Consumer{
+	c := &KafkaConsumer{
 		client:  s.mock,
 		handler: handler,
 		config:  &consumerConfig{},
@@ -270,7 +270,7 @@ func (s *ConsumerTestSuite) TestConsumer_HandleRecord_Error() {
 		return testErr
 	})
 
-	c := &Consumer{
+	c := &KafkaConsumer{
 		client:  s.mock,
 		handler: handler,
 		config:  &consumerConfig{},
@@ -332,7 +332,7 @@ func (s *ConsumerTestSuite) TestConsumer_PollLoop_WithRecords() {
 		return kgo.Fetches{}
 	}
 
-	c := &Consumer{
+	c := &KafkaConsumer{
 		client:  mock,
 		handler: handler,
 		config:  &consumerConfig{},

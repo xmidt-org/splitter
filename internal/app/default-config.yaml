@@ -43,10 +43,6 @@ producer:
   brokers:
     - "localhost:9092"
   topic_routes:
-    - pattern: "device-lifecycle"
-      topic: "device-lifecycle"
-    - pattern: "device-status"
-      topic: "device-status"
     - pattern: "*"
       topic: "default-events"
 

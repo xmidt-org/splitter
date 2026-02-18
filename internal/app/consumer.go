@@ -19,14 +19,14 @@ import (
 type ConsumerIn struct {
 	fx.In
 	Config        consumer.Config
-	Publisher     *publisher.Publisher
+	Publisher     publisher.Publisher
 	LogEmitter    *observe.Subject[log.Event]
 	MetricEmitter *observe.Subject[metrics.Event]
 }
 
 type ConsumerOut struct {
 	fx.Out
-	Consumer *consumer.Consumer
+	Consumer consumer.Consumer
 }
 
 // provideConsumer creates a new Kafka consumer instance with options from the config file

@@ -222,17 +222,17 @@ func (suite *OptionsTestSuite) TestOptions() {
 	tests := []struct {
 		name        string
 		option      Option
-		setupPub    func() *Publisher
-		verifyPub   func(*Publisher)
+		setupPub    func() *KafkaPublisher
+		verifyPub   func(*KafkaPublisher)
 		description string
 	}{
 		{
 			name:   "WithBrokers_single",
 			option: WithBrokers("localhost:9092"),
-			setupPub: func() *Publisher {
-				return &Publisher{config: &publisherConfig{}}
+			setupPub: func() *KafkaPublisher {
+				return &KafkaPublisher{config: &publisherConfig{}}
 			},
-			verifyPub: func(p *Publisher) {
+			verifyPub: func(p *KafkaPublisher) {
 				suite.Equal([]string{"localhost:9092"}, p.config.brokers)
 			},
 			description: "Should set single broker correctly",
@@ -240,10 +240,10 @@ func (suite *OptionsTestSuite) TestOptions() {
 		{
 			name:   "WithBrokers_multiple",
 			option: WithBrokers("localhost:9092", "localhost:9093", "localhost:9094"),
-			setupPub: func() *Publisher {
-				return &Publisher{config: &publisherConfig{}}
+			setupPub: func() *KafkaPublisher {
+				return &KafkaPublisher{config: &publisherConfig{}}
 			},
-			verifyPub: func(p *Publisher) {
+			verifyPub: func(p *KafkaPublisher) {
 				expected := []string{"localhost:9092", "localhost:9093", "localhost:9094"}
 				suite.Equal(expected, p.config.brokers)
 			},
@@ -255,10 +255,10 @@ func (suite *OptionsTestSuite) TestOptions() {
 				Topic:   "events",
 				Pattern: "event:.*",
 			}),
-			setupPub: func() *Publisher {
-				return &Publisher{config: &publisherConfig{}}
+			setupPub: func() *KafkaPublisher {
+				return &KafkaPublisher{config: &publisherConfig{}}
 			},
-			verifyPub: func(p *Publisher) {
+			verifyPub: func(p *KafkaPublisher) {
 				expected := []wrpkafka.TopicRoute{
 					{Topic: "events", Pattern: "event:.*"},
 				}
@@ -272,10 +272,10 @@ func (suite *OptionsTestSuite) TestOptions() {
 				wrpkafka.TopicRoute{Topic: "events", Pattern: "event:.*"},
 				wrpkafka.TopicRoute{Topic: "commands", Pattern: "mac:.*/command"},
 			),
-			setupPub: func() *Publisher {
-				return &Publisher{config: &publisherConfig{}}
+			setupPub: func() *KafkaPublisher {
+				return &KafkaPublisher{config: &publisherConfig{}}
 			},
-			verifyPub: func(p *Publisher) {
+			verifyPub: func(p *KafkaPublisher) {
 				expected := []wrpkafka.TopicRoute{
 					{Topic: "events", Pattern: "event:.*"},
 					{Topic: "commands", Pattern: "mac:.*/command"},
@@ -287,10 +287,10 @@ func (suite *OptionsTestSuite) TestOptions() {
 		{
 			name:   "WithMaxBufferedRecords",
 			option: WithMaxBufferedRecords(5000),
-			setupPub: func() *Publisher {
-				return &Publisher{config: &publisherConfig{}}
+			setupPub: func() *KafkaPublisher {
+				return &KafkaPublisher{config: &publisherConfig{}}
 			},
-			verifyPub: func(p *Publisher) {
+			verifyPub: func(p *KafkaPublisher) {
 				suite.Equal(5000, p.config.maxBufferedRecords)
 			},
 			description: "Should set max buffered records correctly",
@@ -298,10 +298,10 @@ func (suite *OptionsTestSuite) TestOptions() {
 		{
 			name:   "WithMaxBufferedBytes",
 			option: WithMaxBufferedBytes(1024 * 1024 * 10), // 10MB
-			setupPub: func() *Publisher {
-				return &Publisher{config: &publisherConfig{}}
+			setupPub: func() *KafkaPublisher {
+				return &KafkaPublisher{config: &publisherConfig{}}
 			},
-			verifyPub: func(p *Publisher) {
+			verifyPub: func(p *KafkaPublisher) {
 				suite.Equal(1024*1024*10, p.config.maxBufferedBytes)
 			},
 			description: "Should set max buffered bytes correctly",
@@ -309,10 +309,10 @@ func (suite *OptionsTestSuite) TestOptions() {
 		{
 			name:   "WithRequestTimeout",
 			option: WithRequestTimeout(45 * time.Second),
-			setupPub: func() *Publisher {
-				return &Publisher{config: &publisherConfig{}}
+			setupPub: func() *KafkaPublisher {
+				return &KafkaPublisher{config: &publisherConfig{}}
 			},
-			verifyPub: func(p *Publisher) {
+			verifyPub: func(p *KafkaPublisher) {
 				suite.Equal(45*time.Second, p.config.requestTimeout)
 			},
 			description: "Should set request timeout correctly",
@@ -320,10 +320,10 @@ func (suite *OptionsTestSuite) TestOptions() {
 		{
 			name:   "WithCleanupTimeout",
 			option: WithCleanupTimeout(15 * time.Second),
-			setupPub: func() *Publisher {
-				return &Publisher{config: &publisherConfig{}}
+			setupPub: func() *KafkaPublisher {
+				return &KafkaPublisher{config: &publisherConfig{}}
 			},
-			verifyPub: func(p *Publisher) {
+			verifyPub: func(p *KafkaPublisher) {
 				suite.Equal(15*time.Second, p.config.cleanupTimeout)
 			},
 			description: "Should set cleanup timeout correctly",
@@ -331,10 +331,10 @@ func (suite *OptionsTestSuite) TestOptions() {
 		{
 			name:   "WithMaxRetries",
 			option: WithMaxRetries(5),
-			setupPub: func() *Publisher {
-				return &Publisher{config: &publisherConfig{}}
+			setupPub: func() *KafkaPublisher {
+				return &KafkaPublisher{config: &publisherConfig{}}
 			},
-			verifyPub: func(p *Publisher) {
+			verifyPub: func(p *KafkaPublisher) {
 				suite.Equal(5, p.config.maxRetries)
 			},
 			description: "Should set max retries correctly",
@@ -342,10 +342,10 @@ func (suite *OptionsTestSuite) TestOptions() {
 		{
 			name:   "WithAllowAutoTopicCreation_true",
 			option: WithAllowAutoTopicCreation(true),
-			setupPub: func() *Publisher {
-				return &Publisher{config: &publisherConfig{}}
+			setupPub: func() *KafkaPublisher {
+				return &KafkaPublisher{config: &publisherConfig{}}
 			},
-			verifyPub: func(p *Publisher) {
+			verifyPub: func(p *KafkaPublisher) {
 				suite.True(p.config.allowAutoTopicCreation)
 			},
 			description: "Should enable auto topic creation",
@@ -353,10 +353,10 @@ func (suite *OptionsTestSuite) TestOptions() {
 		{
 			name:   "WithAllowAutoTopicCreation_false",
 			option: WithAllowAutoTopicCreation(false),
-			setupPub: func() *Publisher {
-				return &Publisher{config: &publisherConfig{}}
+			setupPub: func() *KafkaPublisher {
+				return &KafkaPublisher{config: &publisherConfig{}}
 			},
-			verifyPub: func(p *Publisher) {
+			verifyPub: func(p *KafkaPublisher) {
 				suite.False(p.config.allowAutoTopicCreation)
 			},
 			description: "Should disable auto topic creation",
@@ -364,10 +364,10 @@ func (suite *OptionsTestSuite) TestOptions() {
 		{
 			name:   "WithSASLPlain",
 			option: WithSASLPlain("testuser", "testpass"),
-			setupPub: func() *Publisher {
-				return &Publisher{config: &publisherConfig{}}
+			setupPub: func() *KafkaPublisher {
+				return &KafkaPublisher{config: &publisherConfig{}}
 			},
-			verifyPub: func(p *Publisher) {
+			verifyPub: func(p *KafkaPublisher) {
 				suite.NotNil(p.config.sasl)
 			},
 			description: "Should set SASL Plain mechanism",
@@ -375,10 +375,10 @@ func (suite *OptionsTestSuite) TestOptions() {
 		{
 			name:   "WithSASLScram256",
 			option: WithSASLScram256("testuser", "testpass"),
-			setupPub: func() *Publisher {
-				return &Publisher{config: &publisherConfig{}}
+			setupPub: func() *KafkaPublisher {
+				return &KafkaPublisher{config: &publisherConfig{}}
 			},
-			verifyPub: func(p *Publisher) {
+			verifyPub: func(p *KafkaPublisher) {
 				suite.NotNil(p.config.sasl)
 			},
 			description: "Should set SASL SCRAM-SHA-256 mechanism",
@@ -386,10 +386,10 @@ func (suite *OptionsTestSuite) TestOptions() {
 		{
 			name:   "WithSASLScram512",
 			option: WithSASLScram512("testuser", "testpass"),
-			setupPub: func() *Publisher {
-				return &Publisher{config: &publisherConfig{}}
+			setupPub: func() *KafkaPublisher {
+				return &KafkaPublisher{config: &publisherConfig{}}
 			},
-			verifyPub: func(p *Publisher) {
+			verifyPub: func(p *KafkaPublisher) {
 				suite.NotNil(p.config.sasl)
 			},
 			description: "Should set SASL SCRAM-SHA-512 mechanism",
@@ -397,10 +397,10 @@ func (suite *OptionsTestSuite) TestOptions() {
 		{
 			name:   "WithTLS",
 			option: WithTLS(),
-			setupPub: func() *Publisher {
-				return &Publisher{config: &publisherConfig{}}
+			setupPub: func() *KafkaPublisher {
+				return &KafkaPublisher{config: &publisherConfig{}}
 			},
-			verifyPub: func(p *Publisher) {
+			verifyPub: func(p *KafkaPublisher) {
 				suite.NotNil(p.config.tls)
 			},
 			description: "Should enable TLS with default config",
@@ -491,7 +491,7 @@ func (suite *OptionsTestSuite) TestSASLConfigOptions() {
 
 	for _, tt := range tests {
 		suite.Run(tt.name, func() {
-			pub := &Publisher{config: &publisherConfig{}}
+			pub := &KafkaPublisher{config: &publisherConfig{}}
 			option := WithSASLConfig(tt.saslConfig)
 
 			err := option.apply(pub)
@@ -573,7 +573,7 @@ func (suite *OptionsTestSuite) TestTLSConfigOptions() {
 
 	for _, tt := range tests {
 		suite.Run(tt.name, func() {
-			pub := &Publisher{config: &publisherConfig{}}
+			pub := &KafkaPublisher{config: &publisherConfig{}}
 			option := WithTLSConfig(tt.tlsConfig)
 
 			err := option.apply(pub)
@@ -611,7 +611,7 @@ func (suite *OptionsTestSuite) TestNilOptions() {
 
 	for _, tt := range tests {
 		suite.Run(tt.name, func() {
-			pub := &Publisher{config: &publisherConfig{}}
+			pub := &KafkaPublisher{config: &publisherConfig{}}
 
 			err := tt.option.apply(pub)
 

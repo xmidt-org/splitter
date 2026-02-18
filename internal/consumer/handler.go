@@ -10,10 +10,10 @@ import (
 	"xmidt-org/splitter/internal/log"
 	"xmidt-org/splitter/internal/metrics"
 	"xmidt-org/splitter/internal/observe"
+	"xmidt-org/splitter/internal/publisher"
 
 	"github.com/twmb/franz-go/pkg/kgo"
 	"github.com/xmidt-org/wrp-go/v5"
-	"github.com/xmidt-org/wrpkafka"
 )
 
 // MessageHandler defines the interface for handling Kafka messages.
@@ -38,23 +38,16 @@ func (f MessageHandlerFunc) HandleMessage(ctx context.Context, record *kgo.Recor
 	return f(ctx, record)
 }
 
-// WRPProducer defines the interface for producing WRP messages to Kafka topics.
-type WRPProducer interface {
-	Produce(ctx context.Context, msg *wrp.Message) (wrpkafka.Outcome, error)
-	Start() error
-	Stop(ctx context.Context) error
-}
-
 // WRPMessageHandler implements MessageHandler for routing WRP messages to different Kafka topics.
 type WRPMessageHandler struct {
-	producer      WRPProducer
+	producer      publisher.Publisher
 	logEmitter    *observe.Subject[log.Event]
 	metricEmitter *observe.Subject[metrics.Event]
 }
 
 // WRPMessageHandlerConfig contains configuration for the WRP message handler.
 type WRPMessageHandlerConfig struct {
-	Producer       WRPProducer
+	Producer       publisher.Publisher
 	LogEmitter     *observe.Subject[log.Event]
 	MetricsEmitter *observe.Subject[metrics.Event]
 }
