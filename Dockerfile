@@ -21,13 +21,13 @@ COPY splitter /
 
 # Include compliance details about the container and what it contains.
 COPY Dockerfile /
-COPY NOTICE     /
-COPY LICENSE    /
+# COPY NOTICE     /
+# COPY LICENSE    /
 
 
 # Make the location for the configuration file that will be used.
 RUN     mkdir /etc/splitter/
-COPY .release/docker/config/config.yaml  /etc/splitter/splitter.yaml
+#COPY .release/docker/config/config.yaml  /etc/splitter/splitter.yaml
 
 USER root
 
