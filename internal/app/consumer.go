@@ -15,7 +15,6 @@ import (
 	"go.uber.org/fx"
 )
 
-// splitter  module as a potential library component - rework this.
 type ConsumerIn struct {
 	fx.In
 	Config        consumer.Config
@@ -86,8 +85,11 @@ func provideConsumer(in ConsumerIn) (ConsumerOut, error) {
 		// Connection (Duration type, not pointer)
 		consumer.WithConnIdleTimeout(cfg.ConnIdleTimeout),
 		consumer.WithRequestTimeoutOverhead(cfg.RequestTimeoutOverhead),
-		consumer.WithDisableAutoCommit(cfg.DisableAutoCommit),
 		consumer.WithConsumeFromTheBeginning(cfg.ConsumeFromBeginning),
+
+		// Fetch State Management
+		consumer.WithResumeDelaySeconds(cfg.ResumeDelaySeconds),
+		consumer.WithConsecutiveFailuresThreshold(cfg.ConsecutiveFailureThreshold),
 	}
 
 	// Create the consumer

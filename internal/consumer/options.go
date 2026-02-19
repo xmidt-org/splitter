@@ -42,11 +42,10 @@ func (f optionFunc) apply(c *KafkaConsumer) error {
 // consumerConfig holds the configuration for a Consumer.
 type consumerConfig struct {
 	// Required options
-	brokers            []string
-	topics             []string
-	groupID            string
-	handler            MessageHandler
-	autocommitDisabled bool
+	brokers []string
+	topics  []string
+	groupID string
+	handler MessageHandler
 
 	// franz-go client options
 	kgoOpts []kgo.Opt
@@ -66,6 +65,7 @@ func validate(config *consumerConfig) error {
 	if config.handler == nil {
 		return errors.New("message handler is required")
 	}
+
 	return nil
 }
 
@@ -207,18 +207,6 @@ func WithAutoCommitInterval(interval time.Duration) Option {
 	return optionFunc(func(c *KafkaConsumer) error {
 		if interval > 0 {
 			c.config.kgoOpts = append(c.config.kgoOpts, kgo.AutoCommitInterval(interval))
-		}
-		return nil
-	})
-}
-
-// WithDisableAutoCommit disables automatic offset committing.
-// When disabled, the application is responsible for committing offsets.
-func WithDisableAutoCommit(disable bool) Option {
-	return optionFunc(func(c *KafkaConsumer) error {
-		if disable {
-			c.config.kgoOpts = append(c.config.kgoOpts, kgo.DisableAutoCommit())
-			c.config.autocommitDisabled = true
 		}
 		return nil
 	})
@@ -559,6 +547,7 @@ func WithOnPartitionsLost(fn func(context.Context, *kgo.Client, map[string][]int
 func WithClientID(clientID string) Option {
 	return optionFunc(func(c *KafkaConsumer) error {
 		if clientID != "" {
+			c.clientId = clientID
 			c.config.kgoOpts = append(c.config.kgoOpts, kgo.ClientID(clientID))
 		}
 		return nil
@@ -587,6 +576,26 @@ func WithInstanceID(instanceID string) Option {
 		if instanceID != "" {
 			c.config.kgoOpts = append(c.config.kgoOpts, kgo.InstanceID(instanceID))
 		}
+		return nil
+	})
+}
+
+// number of consecutive failures due to retryable
+// errors before consumer fetches are paused.  If set to 0, the consumer
+// will never pause fetches.
+func WithConsecutiveFailuresThreshold(threshold int) Option {
+	return optionFunc(func(c *KafkaConsumer) error {
+		c.consecutiveFailureThreshold = threshold
+		return nil
+	})
+}
+
+// the number of seconds after which the consumer will automatically
+// resume fetching if fetching is paused. If set to 0, the consumer
+// will never pause fetches.
+func WithResumeDelaySeconds(seconds int) Option {
+	return optionFunc(func(c *KafkaConsumer) error {
+		c.resumeDelaySeconds = seconds
 		return nil
 	})
 }

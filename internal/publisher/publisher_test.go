@@ -5,6 +5,7 @@ package publisher
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"sync"
 	"testing"
@@ -568,7 +569,7 @@ func (suite *PublisherTestSuite) TestEdgeCases() {
 			description: "Should handle nil message gracefully",
 		},
 		{
-			name: "produce_with_cancelled_context",
+			name: "produce_with_canceled_context",
 			setupTest: func() (*KafkaPublisher, *wrp.Message, context.Context) {
 				p, _ := New(
 					WithBrokers("localhost:9092"),
@@ -585,7 +586,7 @@ func (suite *PublisherTestSuite) TestEdgeCases() {
 				return p, message, ctx
 			},
 			expectError: true,
-			description: "Should handle cancelled context appropriately",
+			description: "Should handle canceled context appropriately",
 		},
 		{
 			name: "produce_with_empty_message_fields",
@@ -639,7 +640,7 @@ func (suite *PublisherTestSuite) TestConcurrentStartStop() {
 
 	const numGoroutines = 10
 	var wg sync.WaitGroup
-	errors := make(chan error, numGoroutines*2)
+	errorlist := make(chan error, numGoroutines*2)
 
 	// Launch multiple goroutines trying to start
 	for i := 0; i < numGoroutines; i++ {
@@ -647,7 +648,7 @@ func (suite *PublisherTestSuite) TestConcurrentStartStop() {
 		go func() {
 			defer wg.Done()
 			if err := publisher.Start(); err != nil {
-				errors <- err
+				errorlist <- err
 			}
 		}()
 	}
@@ -658,18 +659,18 @@ func (suite *PublisherTestSuite) TestConcurrentStartStop() {
 		go func() {
 			defer wg.Done()
 			if err := publisher.Stop(context.Background()); err != nil {
-				errors <- err
+				errorlist <- err
 			}
 		}()
 	}
 
 	wg.Wait()
-	close(errors)
+	close(errorlist)
 
 	// Check that we got expected errors (multiple start attempts)
 	errorCount := 0
-	for err := range errors {
-		if err == ErrPublisherAlreadyStarted {
+	for err := range errorlist {
+		if errors.Is(err, ErrPublisherAlreadyStarted) {
 			errorCount++
 		}
 	}

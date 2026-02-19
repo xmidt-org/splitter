@@ -575,8 +575,8 @@ func TestOnStart(t *testing.T) {
 		{
 			name: "ContextWithValue",
 			setupContext: func() (context.Context, context.CancelFunc) {
-				ctx := context.WithValue(context.Background(), "test-key", "test-value")
-				return ctx, func() {} // No-op cancel
+				ctx := context.WithValue(context.Background(), "test-key", "test-value") //nolint
+				return ctx, func() {}                                                    // No-op cancel
 			},
 			setupMocks: func(mockPub *MockPublisher, mockCon *MockConsumer) {
 				mockPub.On("Start").Return(nil)
@@ -830,7 +830,7 @@ consumer:
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// Create temporary files if needed
-			var tempFiles []string
+			tempFiles := make([]string, 0, 2*len(tc.setupFiles))
 			defer func() {
 				for _, file := range tempFiles {
 					os.Remove(file)
@@ -1065,14 +1065,14 @@ func TestOnStop(t *testing.T) {
 			description: "OnStop should succeed despite parent context timeout due to internal 60s timeout",
 		},
 		{
-			name: "ParentContextAlreadyCancelledButInternalTimeoutWorks",
+			name: "ParentContextAlreadyCanceledButInternalTimeoutWorks",
 			setupContext: func() (context.Context, context.CancelFunc) {
 				ctx, cancel := context.WithCancel(context.Background())
 				cancel() // Cancel immediately
 				return ctx, cancel
 			},
 			setupMocks: func(mockPub *MockPublisher, mockCon *MockConsumer) {
-				// Even with parent cancelled, internal 60s timeout should work
+				// Even with parent canceled, internal 60s timeout should work
 				mockCon.On("Stop", mock.Anything).Return(nil)
 				mockPub.On("Stop", mock.Anything).Return(nil)
 			},

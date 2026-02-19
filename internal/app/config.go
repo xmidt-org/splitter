@@ -29,7 +29,7 @@ var defaultConfigFile []byte
 
 // Config is the configuration for the wrp-kafka-splitter.
 type Config struct {
-	Logging           LogConfig
+	Logger            LogConfig
 	Tracing           candlelight.Config
 	Prometheus        touchstone.Config
 	PrometheusHandler touchhttp.Config

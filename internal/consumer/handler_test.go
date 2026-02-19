@@ -95,14 +95,14 @@ func (suite *WRPMessageHandlerTestSuite) getLogEvents() []log.Event {
 	return events
 }
 
-func (suite *WRPMessageHandlerTestSuite) getMetricEvents() []metrics.Event {
-	suite.eventMutex.Lock()
-	defer suite.eventMutex.Unlock()
-	// Return a copy to avoid race conditions
-	events := make([]metrics.Event, len(suite.metricEvents))
-	copy(events, suite.metricEvents)
-	return events
-}
+// func (suite *WRPMessageHandlerTestSuite) getMetricEvents() []metrics.Event {
+// 	suite.eventMutex.Lock()
+// 	defer suite.eventMutex.Unlock()
+// 	// Return a copy to avoid race conditions
+// 	events := make([]metrics.Event, len(suite.metricEvents))
+// 	copy(events, suite.metricEvents)
+// 	return events
+// }
 
 func (suite *WRPMessageHandlerTestSuite) clearLogEvents() {
 	suite.eventMutex.Lock()
@@ -110,11 +110,11 @@ func (suite *WRPMessageHandlerTestSuite) clearLogEvents() {
 	suite.logEvents = suite.logEvents[:0]
 }
 
-func (suite *WRPMessageHandlerTestSuite) clearMetricEvents() {
-	suite.eventMutex.Lock()
-	defer suite.eventMutex.Unlock()
-	suite.metricEvents = suite.metricEvents[:0]
-}
+// func (suite *WRPMessageHandlerTestSuite) clearMetricEvents() {
+// 	suite.eventMutex.Lock()
+// 	defer suite.eventMutex.Unlock()
+// 	suite.metricEvents = suite.metricEvents[:0]
+// }
 
 func (suite *WRPMessageHandlerTestSuite) clearAllEvents() {
 	suite.eventMutex.Lock()
@@ -123,17 +123,17 @@ func (suite *WRPMessageHandlerTestSuite) clearAllEvents() {
 	suite.metricEvents = suite.metricEvents[:0]
 }
 
-func (suite *WRPMessageHandlerTestSuite) getLogEventCount() int {
-	suite.eventMutex.Lock()
-	defer suite.eventMutex.Unlock()
-	return len(suite.logEvents)
-}
+// func (suite *WRPMessageHandlerTestSuite) getLogEventCount() int {
+// 	suite.eventMutex.Lock()
+// 	defer suite.eventMutex.Unlock()
+// 	return len(suite.logEvents)
+// }
 
-func (suite *WRPMessageHandlerTestSuite) getMetricEventCount() int {
-	suite.eventMutex.Lock()
-	defer suite.eventMutex.Unlock()
-	return len(suite.metricEvents)
-}
+// func (suite *WRPMessageHandlerTestSuite) getMetricEventCount() int {
+// 	suite.eventMutex.Lock()
+// 	defer suite.eventMutex.Unlock()
+// 	return len(suite.metricEvents)
+// }
 
 // Helper function to create MessagePack encoded WRP messages
 func createMessagePackWRPMessage(msg *wrp.Message) ([]byte, error) {
@@ -416,8 +416,8 @@ func TestMessageHandlerFunc(t *testing.T) {
 	}{
 		{
 			name: "successful_handler_func",
-			handlerFunc: func(ctx context.Context, record *kgo.Record) error {
-				return nil
+			handlerFunc: func(ctx context.Context, record *kgo.Record) (wrpkafka.Outcome, error) {
+				return wrpkafka.Accepted, nil
 			},
 			record:      createKafkaRecord("test-topic", []byte("key"), []byte("value")),
 			expectedErr: nil,
@@ -425,8 +425,8 @@ func TestMessageHandlerFunc(t *testing.T) {
 		},
 		{
 			name: "handler_func_with_error",
-			handlerFunc: func(ctx context.Context, record *kgo.Record) error {
-				return errors.New("handler error")
+			handlerFunc: func(ctx context.Context, record *kgo.Record) (wrpkafka.Outcome, error) {
+				return wrpkafka.Failed, errors.New("handler error")
 			},
 			record:      createKafkaRecord("test-topic", []byte("key"), []byte("value")),
 			expectedErr: errors.New("handler error"),
@@ -434,11 +434,11 @@ func TestMessageHandlerFunc(t *testing.T) {
 		},
 		{
 			name: "handler_func_with_context_check",
-			handlerFunc: func(ctx context.Context, record *kgo.Record) error {
+			handlerFunc: func(ctx context.Context, record *kgo.Record) (wrpkafka.Outcome, error) {
 				if record.Topic != "expected-topic" {
-					return errors.New("unexpected topic")
+					return wrpkafka.Failed, errors.New("unexpected topic")
 				}
-				return nil
+				return wrpkafka.Accepted, nil
 			},
 			record:      createKafkaRecord("unexpected-topic", []byte("key"), []byte("value")),
 			expectedErr: errors.New("unexpected topic"),
@@ -449,7 +449,7 @@ func TestMessageHandlerFunc(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
-			err := tt.handlerFunc.HandleMessage(ctx, tt.record)
+			_, err := tt.handlerFunc.HandleMessage(ctx, tt.record)
 
 			if tt.expectedErr != nil {
 				assert.Error(t, err, tt.description)
@@ -476,14 +476,14 @@ func TestWRPMessageHandlerEdgeCases(t *testing.T) {
 				ctx := context.Background()
 
 				// Create handler that would handle nil record
-				handlerFunc := MessageHandlerFunc(func(ctx context.Context, record *kgo.Record) error {
+				handlerFunc := MessageHandlerFunc(func(ctx context.Context, record *kgo.Record) (wrpkafka.Outcome, error) {
 					if record == nil {
-						return errors.New("nil record")
+						return wrpkafka.Failed, errors.New("nil record")
 					}
-					return nil
+					return wrpkafka.Accepted, nil
 				})
 
-				err := handlerFunc.HandleMessage(ctx, nil)
+				_, err := handlerFunc.HandleMessage(ctx, nil)
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), "nil record")
 			},
@@ -707,7 +707,7 @@ func (suite *WRPMessageHandlerTestSuite) TestHandleMessageTypes() {
 			record := createKafkaRecord("wrp-topic", []byte("test-key"), msgBytes)
 
 			// Execute
-			err = handler.HandleMessage(context.Background(), record)
+			_, err = handler.HandleMessage(context.Background(), record)
 
 			if tt.expectError {
 				suite.Error(err, tt.description)
@@ -795,7 +795,7 @@ func (suite *WRPMessageHandlerTestSuite) TestContextCancellation() {
 			defer cancel()
 
 			// Execute
-			err = handler.HandleMessage(ctx, record)
+			_, err = handler.HandleMessage(ctx, record)
 
 			if tt.expectError {
 				suite.Error(err, tt.description)
@@ -842,7 +842,7 @@ func (suite *WRPMessageHandlerTestSuite) TestConcurrentHandling() {
 			defer wg.Done()
 
 			record := createKafkaRecord("test-topic", []byte(fmt.Sprintf("key-%d", index)), msgBytes)
-			err := handler.HandleMessage(context.Background(), record)
+			_, err := handler.HandleMessage(context.Background(), record)
 			suite.NoError(err, "Concurrent handler should succeed")
 		}(i)
 	}
@@ -875,7 +875,7 @@ func (suite *WRPMessageHandlerTestSuite) TestErrorScenarios() {
 			setupMock: func(mockPub *MockWRPProducer) {
 				// No expectations since decode will fail before producer call
 			},
-			expectError:    false, // Malformed messages don't return errors
+			expectError:    true, // Malformed messages return a known error
 			expectLogLevel: log.LevelWarn,
 			description:    "Should handle invalid MessagePack gracefully",
 		},
@@ -887,7 +887,7 @@ func (suite *WRPMessageHandlerTestSuite) TestErrorScenarios() {
 			setupMock: func(mockPub *MockWRPProducer) {
 				// No expectations since decode will fail
 			},
-			expectError:    false,
+			expectError:    true,
 			expectLogLevel: log.LevelWarn,
 			description:    "Should handle empty record value gracefully",
 		},
@@ -955,7 +955,7 @@ func (suite *WRPMessageHandlerTestSuite) TestErrorScenarios() {
 			}
 
 			record := tt.setupRecord()
-			err := handler.HandleMessage(context.Background(), record)
+			_, err := handler.HandleMessage(context.Background(), record)
 
 			if tt.expectError {
 				suite.Error(err, tt.description)

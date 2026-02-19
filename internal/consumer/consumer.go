@@ -7,16 +7,27 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"net"
 	"sync"
+	"sync/atomic"
+	"time"
 
 	"xmidt-org/splitter/internal/log"
 	"xmidt-org/splitter/internal/metrics"
 	"xmidt-org/splitter/internal/observe"
 
+	"github.com/twmb/franz-go/pkg/kerr"
 	"github.com/twmb/franz-go/pkg/kgo"
+	"github.com/twmb/franz-go/pkg/kmsg"
+	"github.com/xmidt-org/wrpkafka"
 )
 
 var ErrPingingBroker = errors.New("error pinging kafka broker")
+
+var tickerInterval = 5 * time.Second
+
+// Consumer represents a high-throughput Kafka consumer using franz-go.
 
 type Consumer interface {
 	Start() error
@@ -24,10 +35,10 @@ type Consumer interface {
 	IsRunning() bool
 }
 
-// KafkaConsumer represents a high-throughput Kafka consumer using franz-go.
 // It manages the consumer lifecycle, message polling, and graceful shutdown.
 type KafkaConsumer struct {
 	client        Client
+	clientId      string
 	handler       MessageHandler
 	config        *consumerConfig
 	logEmitter    *observe.Subject[log.Event]
@@ -37,8 +48,13 @@ type KafkaConsumer struct {
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
 
-	mu      sync.RWMutex
-	running bool
+	mu                          sync.RWMutex
+	running                     bool
+	consecutiveFailures         atomic.Int64
+	consecutiveFailureThreshold int
+	resumeDelaySeconds          int
+	isPaused                    atomic.Bool
+	unPauseAt                   atomic.Int64
 }
 
 // New creates a new Consumer with the provided options.
@@ -52,9 +68,10 @@ func New(opts ...Option) (Consumer, error) {
 		config: &consumerConfig{
 			kgoOpts: make([]kgo.Opt, 0),
 		},
-		logEmitter: log.NewNoop(), // Default to no-op emitter
-		ctx:        ctx,
-		cancel:     cancel,
+		logEmitter:    log.NewNoop(),
+		metricEmitter: metrics.NewNoop(),
+		ctx:           ctx,
+		cancel:        cancel,
 	}
 
 	// Apply all options to the consumer
@@ -77,6 +94,18 @@ func New(opts ...Option) (Consumer, error) {
 		kgo.SeedBrokers(consumer.config.brokers...),
 		kgo.ConsumerGroup(consumer.config.groupID),
 		kgo.ConsumeTopics(consumer.config.topics...),
+		kgo.AutoCommitMarks(), // commit marked offsets automatically
+		kgo.AutoCommitCallback(func(c *kgo.Client, req *kmsg.OffsetCommitRequest, resp *kmsg.OffsetCommitResponse, err error) {
+			consumer.metricEmitter.Notify(metrics.Event{
+				Name: metrics.ConsumerCommitErrors,
+				Labels: []string{
+					metrics.GroupLabel, req.Group,
+					metrics.MemberIdLabel, req.MemberID,
+					metrics.ClientIdLabel, consumer.clientId,
+				},
+				Value: 1,
+			})
+		}),
 	)
 
 	// Append user-provided options
@@ -89,7 +118,7 @@ func New(opts ...Option) (Consumer, error) {
 		return nil, fmt.Errorf("failed to create kafka client: %w", err)
 	}
 
-	consumer.client = client
+	consumer.client = &kgoClientAdapter{Client: client}
 	return consumer, nil
 }
 
@@ -112,15 +141,24 @@ func (c *KafkaConsumer) Start() error {
 		return fmt.Errorf("failed to ping kafka brokers: %s, %w", err.Error(), ErrPingingBroker)
 	}
 
-	c.running = true
-	c.wg.Add(1)
-
 	c.emitLog(log.LevelInfo, "consumer started", map[string]any{
 		"topics":   c.config.topics,
 		"group_id": c.config.groupID,
 	})
 
+	c.consecutiveFailures.Store(0)
+
+	// Start polling loops in background
+	c.running = true
+
+	c.wg.Add(1)
 	go c.pollLoop()
+
+	// only start fetch state manager if thresholds are configured
+	if (c.consecutiveFailureThreshold > 0) && (c.resumeDelaySeconds > 0) {
+		c.wg.Add(1)
+		go c.startManageFetchState()
+	}
 
 	return nil
 }
@@ -205,11 +243,10 @@ func (c *KafkaConsumer) pollLoop() {
 					"partition": err.Partition,
 				})
 				c.metricEmitter.Notify(metrics.Event{
-					Name: "consumer_errors",
+					Name: metrics.ConsumerFetchErrors,
 					Labels: []string{
-						"partition", fmt.Sprintf("%d", err.Partition),
-						"topic", err.Topic,
-						"type", "record",
+						metrics.PartitionLabel, fmt.Sprintf("%d", err.Partition),
+						metrics.TopicLabel, err.Topic,
 					},
 					Value: 1,
 				})
@@ -218,65 +255,193 @@ func (c *KafkaConsumer) pollLoop() {
 
 		// Process each record
 		fetches.EachRecord(func(record *kgo.Record) {
-			if err := c.handleRecord(record); err != nil {
+			if c.isPaused.Load() {
+				// Stop processing remaining records in this batch
+				return
+			}
+
+			var err error
+			var outcome wrpkafka.Outcome
+			if outcome, err = c.handleRecord(record); err != nil {
 				c.emitLog(log.LevelError, "message handling error", map[string]any{
 					"error":     err,
 					"topic":     record.Topic,
 					"partition": record.Partition,
 					"offset":    record.Offset,
 				})
-				c.metricEmitter.Notify(metrics.Event{
-					Name: "consumer_errors",
-					Labels: []string{
-						"partition", fmt.Sprintf("%d", record.Partition),
-						"topic", record.Topic,
-						"type", "record",
-					},
-					Value: 1,
-				})
 			}
+			c.handleOutcome(outcome, err, record)
 		})
-
-		// the only time autocommit really comes into play is if the consuming application
-		// itself crashes.  Producer errors returned above are either non-retryable kafka errors or
-		// bad wrp messages errors.  Likewise, Fetch errors are logged but do not prevent commits.
-		if c.config.autocommitDisabled {
-			if err := c.client.CommitUncommittedOffsets(context.Background()); err != nil {
-				c.emitLog(log.LevelError, "commit failed", map[string]any{
-					"error": err,
-				})
-				c.metricEmitter.Notify(metrics.Event{
-					Name: metrics.ConsumerErrors,
-					Labels: []string{
-						metrics.PartitionLabel, "unknown",
-						metrics.TopicLabel, "unknown",
-						metrics.ErrorTypeLabel, "commit",
-					},
-					Value: 1,
-				})
-			}
-		}
-
 	}
 }
 
+// Commit Logic:
+//
+// 1. if outcome is Attempted, Queued or Accepted, the record is marked for commit.
+// 2. if the outcome is Failed and the error is not retryable, the record is marked for commit.
+// 3. if the outcome is Failed and the error is retryable, the record is NOT marked for commit.
+//
+// Notes and Shortcomings On Commit Logic:
+//
+// 1. number 3 does not do much of anything, since any subsequent records
+// that are successfully Queued or Attempted will commit all previous records anyway.
+// The partitions we are reading from contain a mix of QOS levels, so while the records may
+// be treated differently in the producer, they all share the same offsets
+// in the consumer. If we really want to avoid losing hign QOS, we would probably need
+// to create a local retry queue just for those records.
+//
+// 2. as a side note, the callbacks also cannot be used to control offset commits,
+// because there is no good way to tie the producer record to the consumer record.
+//
+// 4. We could all or nothing transactions but wrpkafka does not currently support them.
+// We would need to pass in our own kafka client for the session.  Also, if the all or nothing
+// fails, how long do we want to keep the messages from being committed? What is the criteria?  If
+// ANY of the errors from any of the records are retriable, we don't commit the whole lot?
+//
+// 5. This code currently pause fetches after a configurable number of consecutive, retryable errors.
+// But we will lose all records committed but not produced prior to the pause.
+//
+// 6.  TODO - add transaction support to wrpkafka library
+func (c *KafkaConsumer) handleOutcome(outcome wrpkafka.Outcome, err error, record *kgo.Record) {
+	// if queued, attempted, accepted or a permanent error, mark for commit
+	if outcome != wrpkafka.Failed {
+		c.client.MarkCommitRecords(record)
+	} else if err != nil && !isRetryable(err) {
+		c.client.MarkCommitRecords(record)
+	}
+
+	// Accepted means the producer synchronously received an ack from the broker
+	// TODO - consider implementing a local retry queue for high QOS
+	if outcome == wrpkafka.Accepted {
+		c.consecutiveFailures.Store(0)
+	}
+
+	c.handleRetryableError(err)
+}
+
+func (c *KafkaConsumer) handleRetryableError(err error) {
+	// if the error is retryable, increment consecutive failures
+	if isRetryable(err) {
+		c.consecutiveFailures.Add(1)
+		c.emitLog(log.LevelWarn, "retryable error from producer", map[string]any{
+			"error": err,
+			"count": c.consecutiveFailures.Load(),
+		})
+	}
+}
+
+func (c *KafkaConsumer) startManageFetchState() {
+	defer c.wg.Done() // Decrement when this goroutine exits
+
+	ticker := time.NewTicker(tickerInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-c.ctx.Done():
+			// The context was canceled, time to exit the goroutine.
+			c.emitLog(log.LevelInfo, "Context canceled, stopping manageFetchState loop.", map[string]any{})
+			return
+		case <-ticker.C:
+			c.manageFetchState()
+		}
+	}
+}
+
+func (c *KafkaConsumer) manageFetchState() {
+	consecutiveFailures := c.consecutiveFailures.Load()
+
+	if c.isPaused.Load() {
+		// Resume if: 1) timer expired OR 2) recent success(es)
+		shouldResume := time.Now().After(time.Unix(c.unPauseAt.Load(), 0)) ||
+			consecutiveFailures < int64(c.consecutiveFailureThreshold)
+
+		if shouldResume {
+			c.resumeFetchTopics()
+		}
+		return
+	}
+
+	// Not paused - check if we should pause
+	if consecutiveFailures >= int64(c.consecutiveFailureThreshold) {
+		c.pauseFetchTopics()
+	}
+}
+
+func (c *KafkaConsumer) pauseFetchTopics() {
+	if c.isPaused.Load() {
+		return
+	}
+	c.emitLog(log.LevelWarn, "pausing fetches due to sustained publish failures", map[string]any{})
+	c.client.PauseFetchTopics(c.config.topics...)
+	c.isPaused.Store(true)
+	c.unPauseAt.Store(time.Now().Add(time.Duration(c.resumeDelaySeconds) * time.Second).Unix())
+	c.metricEmitter.Notify(metrics.Event{
+		Name: metrics.ConsumerPauses,
+		Labels: []string{
+			metrics.ClientIdLabel, c.clientId,
+		},
+		Value: 1,
+	})
+}
+
+func (c *KafkaConsumer) resumeFetchTopics() {
+	c.emitLog(log.LevelInfo, "resuming fetches after pause", map[string]any{})
+	c.client.ResumeFetchTopics(c.config.topics...)
+	c.isPaused.Store(false)
+	c.metricEmitter.Notify(metrics.Event{
+		Name: metrics.ConsumerPauses,
+		Labels: []string{
+			metrics.ClientIdLabel, c.clientId,
+		},
+		Value: 0,
+	})
+}
+
 // handleRecord processes a single record using the configured handler.
-func (c *KafkaConsumer) handleRecord(record *kgo.Record) error {
+// not that if the buffer is full, franz-go will block on produce until the delivery timeout,
+// , so this call should be synchonous and also block to avoid consuming more messages
+func (c *KafkaConsumer) handleRecord(record *kgo.Record) (wrpkafka.Outcome, error) {
 	// Create a context for this message
 	// In a real implementation, this would include tracing context
 	ctx := context.Background()
 
 	// Invoke the handler
-	if err := c.handler.HandleMessage(ctx, record); err != nil {
-		return fmt.Errorf("handler error for topic=%s partition=%d offset=%d: %w",
-			record.Topic, record.Partition, record.Offset, err)
+	return c.handler.HandleMessage(ctx, record)
+}
+
+func (c *KafkaConsumer) HandlePublishEvent(event *wrpkafka.PublishEvent) {
+	if event.Error != nil {
+		c.emitLog(log.LevelError, "message publish error", map[string]any{
+			"topic":     event.Topic,
+			"error":     event.Error,
+			"errorType": event.ErrorType,
+		})
+	} else {
+		c.emitLog(log.LevelDebug, "message published successfully", map[string]any{
+			"topic": event.Topic,
+			"qos":   event.EventType,
+		})
 	}
 
-	return nil
+	// clean consecutive failures on success
+	if event.Error == nil {
+		c.consecutiveFailures.Store(0)
+	}
+
+	c.handleRetryableError(event.Error)
 }
 
 // emitEvent emits a log event to the configured emitter.
 // The emitter is never nil (defaults to no-op if not configured).
 func (c *KafkaConsumer) emitLog(level log.Level, message string, attrs map[string]any) {
 	c.logEmitter.Notify(log.NewEvent(level, message, attrs))
+}
+
+func isRetryable(err error) bool {
+	return errors.Is(err, context.DeadlineExceeded) ||
+		errors.Is(err, kerr.RequestTimedOut) ||
+		errors.Is(err, kgo.ErrMaxBuffered) ||
+		errors.Is(err, net.ErrClosed) ||
+		errors.Is(err, io.EOF)
 }
