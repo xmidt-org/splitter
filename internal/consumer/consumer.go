@@ -298,8 +298,9 @@ func (c *KafkaConsumer) pollLoop() {
 // fails, how long do we want to keep the messages from being committed? What is the criteria?  If
 // ANY of the errors from any of the records are retriable, we don't commit the whole lot?
 //
-// 5. This code does currently pause fetches if there are no successful writes after a configurable
-// amount of time.  But we will lose all records committed but not produced prior to the pause.
+// 5. This code currently pause fetches after a configurable number of consecutive, retryable errors.
+// But we will lose all records committed but not produced prior to the pause.
+//
 // 6.  TODO - add transaction support to wrpkafka library
 func (c *KafkaConsumer) handleOutcome(outcome wrpkafka.Outcome, err error, record *kgo.Record) {
 	// if queued, attempted, accepted or a permanent error, mark for commit

@@ -5,6 +5,7 @@ package consumer
 
 import (
 	"context"
+	"sync"
 
 	"github.com/stretchr/testify/mock"
 	"github.com/twmb/franz-go/pkg/kgo"
@@ -14,6 +15,7 @@ import (
 // MockClient is a mock implementation of the Client interface
 type MockClient struct {
 	mock.Mock
+	mu sync.Mutex
 }
 
 func (m *MockClient) Ping(ctx context.Context) error {
@@ -22,6 +24,8 @@ func (m *MockClient) Ping(ctx context.Context) error {
 }
 
 func (m *MockClient) PollFetches(ctx context.Context) Fetches {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	args := m.Called(ctx)
 	return args.Get(0).(Fetches)
 }
