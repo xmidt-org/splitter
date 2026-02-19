@@ -95,14 +95,14 @@ func (suite *WRPMessageHandlerTestSuite) getLogEvents() []log.Event {
 	return events
 }
 
-func (suite *WRPMessageHandlerTestSuite) getMetricEvents() []metrics.Event {
-	suite.eventMutex.Lock()
-	defer suite.eventMutex.Unlock()
-	// Return a copy to avoid race conditions
-	events := make([]metrics.Event, len(suite.metricEvents))
-	copy(events, suite.metricEvents)
-	return events
-}
+// func (suite *WRPMessageHandlerTestSuite) getMetricEvents() []metrics.Event {
+// 	suite.eventMutex.Lock()
+// 	defer suite.eventMutex.Unlock()
+// 	// Return a copy to avoid race conditions
+// 	events := make([]metrics.Event, len(suite.metricEvents))
+// 	copy(events, suite.metricEvents)
+// 	return events
+// }
 
 func (suite *WRPMessageHandlerTestSuite) clearLogEvents() {
 	suite.eventMutex.Lock()
@@ -110,11 +110,11 @@ func (suite *WRPMessageHandlerTestSuite) clearLogEvents() {
 	suite.logEvents = suite.logEvents[:0]
 }
 
-func (suite *WRPMessageHandlerTestSuite) clearMetricEvents() {
-	suite.eventMutex.Lock()
-	defer suite.eventMutex.Unlock()
-	suite.metricEvents = suite.metricEvents[:0]
-}
+// func (suite *WRPMessageHandlerTestSuite) clearMetricEvents() {
+// 	suite.eventMutex.Lock()
+// 	defer suite.eventMutex.Unlock()
+// 	suite.metricEvents = suite.metricEvents[:0]
+// }
 
 func (suite *WRPMessageHandlerTestSuite) clearAllEvents() {
 	suite.eventMutex.Lock()
@@ -123,17 +123,17 @@ func (suite *WRPMessageHandlerTestSuite) clearAllEvents() {
 	suite.metricEvents = suite.metricEvents[:0]
 }
 
-func (suite *WRPMessageHandlerTestSuite) getLogEventCount() int {
-	suite.eventMutex.Lock()
-	defer suite.eventMutex.Unlock()
-	return len(suite.logEvents)
-}
+// func (suite *WRPMessageHandlerTestSuite) getLogEventCount() int {
+// 	suite.eventMutex.Lock()
+// 	defer suite.eventMutex.Unlock()
+// 	return len(suite.logEvents)
+// }
 
-func (suite *WRPMessageHandlerTestSuite) getMetricEventCount() int {
-	suite.eventMutex.Lock()
-	defer suite.eventMutex.Unlock()
-	return len(suite.metricEvents)
-}
+// func (suite *WRPMessageHandlerTestSuite) getMetricEventCount() int {
+// 	suite.eventMutex.Lock()
+// 	defer suite.eventMutex.Unlock()
+// 	return len(suite.metricEvents)
+// }
 
 // Helper function to create MessagePack encoded WRP messages
 func createMessagePackWRPMessage(msg *wrp.Message) ([]byte, error) {
@@ -707,7 +707,7 @@ func (suite *WRPMessageHandlerTestSuite) TestHandleMessageTypes() {
 			record := createKafkaRecord("wrp-topic", []byte("test-key"), msgBytes)
 
 			// Execute
-			err = handler.HandleMessage(context.Background(), record)
+			_, err = handler.HandleMessage(context.Background(), record)
 
 			if tt.expectError {
 				suite.Error(err, tt.description)
@@ -795,7 +795,7 @@ func (suite *WRPMessageHandlerTestSuite) TestContextCancellation() {
 			defer cancel()
 
 			// Execute
-			err = handler.HandleMessage(ctx, record)
+			_, err = handler.HandleMessage(ctx, record)
 
 			if tt.expectError {
 				suite.Error(err, tt.description)
@@ -842,7 +842,7 @@ func (suite *WRPMessageHandlerTestSuite) TestConcurrentHandling() {
 			defer wg.Done()
 
 			record := createKafkaRecord("test-topic", []byte(fmt.Sprintf("key-%d", index)), msgBytes)
-			err := handler.HandleMessage(context.Background(), record)
+			_, err := handler.HandleMessage(context.Background(), record)
 			suite.NoError(err, "Concurrent handler should succeed")
 		}(i)
 	}
@@ -875,7 +875,7 @@ func (suite *WRPMessageHandlerTestSuite) TestErrorScenarios() {
 			setupMock: func(mockPub *MockWRPProducer) {
 				// No expectations since decode will fail before producer call
 			},
-			expectError:    false, // Malformed messages don't return errors
+			expectError:    true, // Malformed messages return a known error
 			expectLogLevel: log.LevelWarn,
 			description:    "Should handle invalid MessagePack gracefully",
 		},
@@ -887,7 +887,7 @@ func (suite *WRPMessageHandlerTestSuite) TestErrorScenarios() {
 			setupMock: func(mockPub *MockWRPProducer) {
 				// No expectations since decode will fail
 			},
-			expectError:    false,
+			expectError:    true,
 			expectLogLevel: log.LevelWarn,
 			description:    "Should handle empty record value gracefully",
 		},
@@ -955,7 +955,7 @@ func (suite *WRPMessageHandlerTestSuite) TestErrorScenarios() {
 			}
 
 			record := tt.setupRecord()
-			err := handler.HandleMessage(context.Background(), record)
+			_, err := handler.HandleMessage(context.Background(), record)
 
 			if tt.expectError {
 				suite.Error(err, tt.description)

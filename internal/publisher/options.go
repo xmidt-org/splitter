@@ -219,7 +219,7 @@ func WithTLSConfig(tlsConfig *TLSConfig) Option {
 		}
 
 		config := &tls.Config{
-			InsecureSkipVerify: tlsConfig.InsecureSkipVerify,
+			InsecureSkipVerify: tlsConfig.InsecureSkipVerify, // #nosec G402
 		}
 
 		// Load CA certificate if provided

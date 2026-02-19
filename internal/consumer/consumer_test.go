@@ -122,14 +122,17 @@ func (s *ConsumerTestSuite) TestNew() {
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
 			consumer, err := New(tt.opts...)
-			kafkaConsumer := consumer.(*KafkaConsumer)
+			var kafkaConsumer *KafkaConsumer
+			if consumer != nil {
+				kafkaConsumer, _ = consumer.(*KafkaConsumer)
+			}
 
 			if tt.expectError {
 				s.Error(err)
 				if tt.errorMsg != "" {
 					s.Contains(err.Error(), tt.errorMsg)
 				}
-				s.Nil(kafkaConsumer)
+				s.Nil(consumer)
 			} else {
 				s.NoError(err)
 				s.NotNil(kafkaConsumer)
