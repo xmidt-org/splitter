@@ -28,14 +28,14 @@ var (
 
 // Option is a functional option for configuring a Consumer.
 type Option interface {
-	apply(*Consumer) error
+	apply(*KafkaConsumer) error
 }
 
-type optionFunc func(*Consumer) error
+type optionFunc func(*KafkaConsumer) error
 
 var _ Option = optionFunc(nil)
 
-func (f optionFunc) apply(c *Consumer) error {
+func (f optionFunc) apply(c *KafkaConsumer) error {
 	return f(c)
 }
 
@@ -73,7 +73,7 @@ func validate(config *consumerConfig) error {
 
 // WithBrokers sets the Kafka broker addresses.
 func WithBrokers(brokers ...string) Option {
-	return optionFunc(func(c *Consumer) error {
+	return optionFunc(func(c *KafkaConsumer) error {
 		c.config.brokers = brokers
 		return nil
 	})
@@ -82,7 +82,7 @@ func WithBrokers(brokers ...string) Option {
 // WithTopics sets the topics to consume from.
 // This is a required option.
 func WithTopics(topics ...string) Option {
-	return optionFunc(func(c *Consumer) error {
+	return optionFunc(func(c *KafkaConsumer) error {
 		c.config.topics = topics
 		return nil
 	})
@@ -91,7 +91,7 @@ func WithTopics(topics ...string) Option {
 // WithGroupID sets the consumer group ID.
 // This is a required option for consumer group functionality.
 func WithGroupID(groupID string) Option {
-	return optionFunc(func(c *Consumer) error {
+	return optionFunc(func(c *KafkaConsumer) error {
 		c.config.groupID = groupID
 		return nil
 	})
@@ -100,8 +100,9 @@ func WithGroupID(groupID string) Option {
 // WithMessageHandler sets the handler for consumed messages.
 // This is a required option.
 func WithMessageHandler(handler MessageHandler) Option {
-	return optionFunc(func(c *Consumer) error {
+	return optionFunc(func(c *KafkaConsumer) error {
 		c.config.handler = handler
+		c.handler = handler
 		return nil
 	})
 }
@@ -111,7 +112,7 @@ func WithMessageHandler(handler MessageHandler) Option {
 // WithSessionTimeout sets the consumer group session timeout.
 // If not specified, franz-go's default (45s) is used.
 func WithSessionTimeout(timeout time.Duration) Option {
-	return optionFunc(func(c *Consumer) error {
+	return optionFunc(func(c *KafkaConsumer) error {
 		if timeout != 0 {
 			c.config.kgoOpts = append(c.config.kgoOpts, kgo.SessionTimeout(timeout))
 		}
@@ -122,7 +123,7 @@ func WithSessionTimeout(timeout time.Duration) Option {
 // WithHeartbeatInterval sets the consumer group heartbeat interval.
 // If not specified, franz-go's default (3s) is used.
 func WithHeartbeatInterval(interval time.Duration) Option {
-	return optionFunc(func(c *Consumer) error {
+	return optionFunc(func(c *KafkaConsumer) error {
 		if interval != 0 {
 			c.config.kgoOpts = append(c.config.kgoOpts, kgo.HeartbeatInterval(interval))
 		}
@@ -133,7 +134,7 @@ func WithHeartbeatInterval(interval time.Duration) Option {
 // WithRebalanceTimeout sets the maximum time a rebalance can take.
 // If not specified, franz-go's default is used.
 func WithRebalanceTimeout(timeout time.Duration) Option {
-	return optionFunc(func(c *Consumer) error {
+	return optionFunc(func(c *KafkaConsumer) error {
 		if timeout != 0 {
 			c.config.kgoOpts = append(c.config.kgoOpts, kgo.RebalanceTimeout(timeout))
 		}
@@ -146,7 +147,7 @@ func WithRebalanceTimeout(timeout time.Duration) Option {
 // WithFetchMinBytes sets the minimum bytes to fetch in a request.
 // If not specified, franz-go's default (1 byte) is used.
 func WithFetchMinBytes(bytes int32) Option {
-	return optionFunc(func(c *Consumer) error {
+	return optionFunc(func(c *KafkaConsumer) error {
 		if bytes > 0 {
 			c.config.kgoOpts = append(c.config.kgoOpts, kgo.FetchMinBytes(bytes))
 		}
@@ -157,7 +158,7 @@ func WithFetchMinBytes(bytes int32) Option {
 // WithFetchMaxBytes sets the maximum bytes to fetch in a request.
 // If not specified, franz-go's default (50MB) is used.
 func WithFetchMaxBytes(bytes int32) Option {
-	return optionFunc(func(c *Consumer) error {
+	return optionFunc(func(c *KafkaConsumer) error {
 		if bytes > 0 {
 			c.config.kgoOpts = append(c.config.kgoOpts, kgo.FetchMaxBytes(bytes))
 		}
@@ -168,7 +169,7 @@ func WithFetchMaxBytes(bytes int32) Option {
 // WithFetchMaxWait sets the maximum time to wait for fetch min bytes.
 // If not specified, franz-go's default (5s) is used.
 func WithFetchMaxWait(wait time.Duration) Option {
-	return optionFunc(func(c *Consumer) error {
+	return optionFunc(func(c *KafkaConsumer) error {
 		if wait != 0 {
 			c.config.kgoOpts = append(c.config.kgoOpts, kgo.FetchMaxWait(wait))
 		}
@@ -179,7 +180,7 @@ func WithFetchMaxWait(wait time.Duration) Option {
 // WithFetchMaxPartitionBytes sets the maximum bytes to fetch from a single partition.
 // If not specified, franz-go's default (1MB) is used.
 func WithFetchMaxPartitionBytes(bytes int32) Option {
-	return optionFunc(func(c *Consumer) error {
+	return optionFunc(func(c *KafkaConsumer) error {
 		if bytes > 0 {
 			c.config.kgoOpts = append(c.config.kgoOpts, kgo.FetchMaxPartitionBytes(bytes))
 		}
@@ -190,7 +191,7 @@ func WithFetchMaxPartitionBytes(bytes int32) Option {
 // WithMaxConcurrentFetches sets the maximum number of concurrent fetch requests.
 // If not specified, franz-go's default is used.
 func WithMaxConcurrentFetches(max int) Option {
-	return optionFunc(func(c *Consumer) error {
+	return optionFunc(func(c *KafkaConsumer) error {
 		if max > 0 {
 			c.config.kgoOpts = append(c.config.kgoOpts, kgo.MaxConcurrentFetches(max))
 		}
@@ -203,7 +204,7 @@ func WithMaxConcurrentFetches(max int) Option {
 // WithAutoCommitInterval sets the interval for automatic offset commits.
 // If not specified, franz-go's default (5s) is used.
 func WithAutoCommitInterval(interval time.Duration) Option {
-	return optionFunc(func(c *Consumer) error {
+	return optionFunc(func(c *KafkaConsumer) error {
 		if interval > 0 {
 			c.config.kgoOpts = append(c.config.kgoOpts, kgo.AutoCommitInterval(interval))
 		}
@@ -215,7 +216,7 @@ func WithAutoCommitInterval(interval time.Duration) Option {
 
 // WithSASLPlain configures PLAIN SASL authentication.
 func WithSASLPlain(user, pass string) Option {
-	return optionFunc(func(c *Consumer) error {
+	return optionFunc(func(c *KafkaConsumer) error {
 		mechanism := plain.Auth{
 			User: user,
 			Pass: pass,
@@ -227,7 +228,7 @@ func WithSASLPlain(user, pass string) Option {
 
 // WithSASLScram256 configures SCRAM-SHA-256 SASL authentication.
 func WithSASLScram256(user, pass string) Option {
-	return optionFunc(func(c *Consumer) error {
+	return optionFunc(func(c *KafkaConsumer) error {
 		mechanism := scram.Auth{
 			User: user,
 			Pass: pass,
@@ -239,7 +240,7 @@ func WithSASLScram256(user, pass string) Option {
 
 // WithSASLScram512 configures SCRAM-SHA-512 SASL authentication.
 func WithSASLScram512(user, pass string) Option {
-	return optionFunc(func(c *Consumer) error {
+	return optionFunc(func(c *KafkaConsumer) error {
 		mechanism := scram.Auth{
 			User: user,
 			Pass: pass,
@@ -254,14 +255,14 @@ func WithSASLScram512(user, pass string) Option {
 // WithTLS configures TLS encryption.
 // If tlsConfig is nil, the system's default TLS configuration is used.
 func WithTLS(tlsConfig *tls.Config) Option {
-	return optionFunc(func(c *Consumer) error {
+	return optionFunc(func(c *KafkaConsumer) error {
 		c.config.kgoOpts = append(c.config.kgoOpts, kgo.DialTLSConfig(tlsConfig))
 		return nil
 	})
 }
 
 func WithTLSConfig(t *TLSConfig) Option {
-	return optionFunc(func(c *Consumer) error {
+	return optionFunc(func(c *KafkaConsumer) error {
 		if t == nil || !t.Enabled {
 			return nil
 		}
@@ -300,7 +301,7 @@ func WithTLSConfig(t *TLSConfig) Option {
 }
 
 func WithSASLConfig(s *SASLConfig) Option {
-	return optionFunc(func(c *Consumer) error {
+	return optionFunc(func(c *KafkaConsumer) error {
 		if s == nil {
 			return nil
 		}
@@ -332,7 +333,7 @@ func WithSASLConfig(s *SASLConfig) Option {
 // WithRequestRetries sets the number of retries for requests.
 // If not specified, franz-go's default is used.
 func WithRequestRetries(retries int) Option {
-	return optionFunc(func(c *Consumer) error {
+	return optionFunc(func(c *KafkaConsumer) error {
 		c.config.kgoOpts = append(c.config.kgoOpts, kgo.RequestRetries(retries))
 		return nil
 	})
@@ -341,7 +342,7 @@ func WithRequestRetries(retries int) Option {
 // WithRetryBackoff sets the retry backoff function.
 // If not specified, franz-go's default exponential backoff is used.
 func WithRetryBackoff(fn func(int) time.Duration) Option {
-	return optionFunc(func(c *Consumer) error {
+	return optionFunc(func(c *KafkaConsumer) error {
 		if fn != nil {
 			c.config.kgoOpts = append(c.config.kgoOpts, kgo.RetryBackoffFn(fn))
 		}
@@ -354,7 +355,7 @@ func WithRetryBackoff(fn func(int) time.Duration) Option {
 // WithConnIdleTimeout sets the connection idle timeout.
 // If not specified, franz-go's default is used.
 func WithConnIdleTimeout(timeout time.Duration) Option {
-	return optionFunc(func(c *Consumer) error {
+	return optionFunc(func(c *KafkaConsumer) error {
 		if timeout != 0 {
 			c.config.kgoOpts = append(c.config.kgoOpts, kgo.ConnIdleTimeout(timeout))
 		}
@@ -365,7 +366,7 @@ func WithConnIdleTimeout(timeout time.Duration) Option {
 // WithRequestTimeoutOverhead sets additional timeout overhead for requests.
 // If not specified, franz-go's default is used.
 func WithRequestTimeoutOverhead(overhead time.Duration) Option {
-	return optionFunc(func(c *Consumer) error {
+	return optionFunc(func(c *KafkaConsumer) error {
 		if overhead != 0 {
 			c.config.kgoOpts = append(c.config.kgoOpts, kgo.RequestTimeoutOverhead(overhead))
 		}
@@ -378,7 +379,7 @@ func WithRequestTimeoutOverhead(overhead time.Duration) Option {
 // WithKafkaLogger sets a custom logger for franz-go.
 // The logger will receive franz-go's internal log messages.
 func WithKafkaLogger(logger *slog.Logger) Option {
-	return optionFunc(func(c *Consumer) error {
+	return optionFunc(func(c *KafkaConsumer) error {
 		if logger != nil {
 			kgoLogger := &slogAdapter{logger: logger}
 			c.config.kgoOpts = append(c.config.kgoOpts, kgo.WithLogger(kgoLogger))
@@ -390,7 +391,7 @@ func WithKafkaLogger(logger *slog.Logger) Option {
 // WithLogEmitter sets the log event emitter for the consumer.
 // The emitter will receive errors and consumer lifecycle events.
 func WithLogEmitter(emitter *observe.Subject[log.Event]) Option {
-	return optionFunc(func(c *Consumer) error {
+	return optionFunc(func(c *KafkaConsumer) error {
 		if emitter != nil {
 			c.logEmitter = emitter
 		}
@@ -442,7 +443,7 @@ func (s *slogAdapter) Log(level kgo.LogLevel, msg string, keyvals ...interface{}
 //
 // For full list of metrics, see: https://pkg.go.dev/github.com/twmb/franz-go/plugin/kprom
 func WithPrometheusMetrics(namespace, subsystem string) Option {
-	return optionFunc(func(c *Consumer) error {
+	return optionFunc(func(c *KafkaConsumer) error {
 		if namespace == "" {
 			return fmt.Errorf("metrics namespace cannot be empty")
 		}
@@ -464,7 +465,7 @@ func WithPrometheusMetrics(namespace, subsystem string) Option {
 }
 
 func WithMetricsEmitter(emitter *observe.Subject[metrics.Event]) Option {
-	return optionFunc(func(c *Consumer) error {
+	return optionFunc(func(c *KafkaConsumer) error {
 		if emitter != nil {
 			c.metricEmitter = emitter
 		}
@@ -475,7 +476,7 @@ func WithMetricsEmitter(emitter *observe.Subject[metrics.Event]) Option {
 // WithHooks adds custom hooks for monitoring consumer events.
 // Hooks can be used for metrics, logging, or other observability needs.
 func WithHooks(hooks ...kgo.Hook) Option {
-	return optionFunc(func(c *Consumer) error {
+	return optionFunc(func(c *KafkaConsumer) error {
 		c.config.kgoOpts = append(c.config.kgoOpts, kgo.WithHooks(hooks...))
 		return nil
 	})
@@ -484,7 +485,7 @@ func WithHooks(hooks ...kgo.Hook) Option {
 // Offset Management Options
 
 func WithConsumeFromTheBeginning(beginning bool) Option {
-	return optionFunc(func(c *Consumer) error {
+	return optionFunc(func(c *KafkaConsumer) error {
 		if beginning {
 			offset := kgo.NewOffset().AtStart()
 			c.config.kgoOpts = append(c.config.kgoOpts, kgo.ConsumeResetOffset(offset))
@@ -496,7 +497,7 @@ func WithConsumeFromTheBeginning(beginning bool) Option {
 // WithConsumeResetOffset sets where to start consuming if no offset exists.
 // Common values: kgo.NewOffset().AtStart(), kgo.NewOffset().AtEnd()
 func WithConsumeResetOffset(offset *kgo.Offset) Option {
-	return optionFunc(func(c *Consumer) error {
+	return optionFunc(func(c *KafkaConsumer) error {
 		if offset != nil {
 			c.config.kgoOpts = append(c.config.kgoOpts, kgo.ConsumeResetOffset(*offset))
 		}
@@ -509,7 +510,7 @@ func WithConsumeResetOffset(offset *kgo.Offset) Option {
 // WithOnPartitionsAssigned sets a callback for when partitions are assigned.
 // This can be used for custom initialization when partitions are assigned.
 func WithOnPartitionsAssigned(fn func(context.Context, *kgo.Client, map[string][]int32)) Option {
-	return optionFunc(func(c *Consumer) error {
+	return optionFunc(func(c *KafkaConsumer) error {
 		if fn != nil {
 			c.config.kgoOpts = append(c.config.kgoOpts, kgo.OnPartitionsAssigned(fn))
 		}
@@ -520,7 +521,7 @@ func WithOnPartitionsAssigned(fn func(context.Context, *kgo.Client, map[string][
 // WithOnPartitionsRevoked sets a callback for when partitions are revoked.
 // This can be used for custom cleanup when partitions are revoked.
 func WithOnPartitionsRevoked(fn func(context.Context, *kgo.Client, map[string][]int32)) Option {
-	return optionFunc(func(c *Consumer) error {
+	return optionFunc(func(c *KafkaConsumer) error {
 		if fn != nil {
 			c.config.kgoOpts = append(c.config.kgoOpts, kgo.OnPartitionsRevoked(fn))
 		}
@@ -531,7 +532,7 @@ func WithOnPartitionsRevoked(fn func(context.Context, *kgo.Client, map[string][]
 // WithOnPartitionsLost sets a callback for when partitions are lost.
 // This occurs during unclean rebalances.
 func WithOnPartitionsLost(fn func(context.Context, *kgo.Client, map[string][]int32)) Option {
-	return optionFunc(func(c *Consumer) error {
+	return optionFunc(func(c *KafkaConsumer) error {
 		if fn != nil {
 			c.config.kgoOpts = append(c.config.kgoOpts, kgo.OnPartitionsLost(fn))
 		}
@@ -544,7 +545,7 @@ func WithOnPartitionsLost(fn func(context.Context, *kgo.Client, map[string][]int
 // WithClientID sets the client ID for the Kafka connection.
 // If not specified, franz-go generates a default ID.
 func WithClientID(clientID string) Option {
-	return optionFunc(func(c *Consumer) error {
+	return optionFunc(func(c *KafkaConsumer) error {
 		if clientID != "" {
 			c.clientId = clientID
 			c.config.kgoOpts = append(c.config.kgoOpts, kgo.ClientID(clientID))
@@ -558,7 +559,7 @@ func WithClientID(clientID string) Option {
 // WithRack sets the rack ID for rack-aware partition assignment.
 // This can improve data locality and reduce cross-rack traffic.
 func WithRack(rack string) Option {
-	return optionFunc(func(c *Consumer) error {
+	return optionFunc(func(c *KafkaConsumer) error {
 		if rack != "" {
 			c.config.kgoOpts = append(c.config.kgoOpts, kgo.Rack(rack))
 		}
@@ -571,7 +572,7 @@ func WithRack(rack string) Option {
 // WithInstanceID sets a static consumer group member ID.
 // This enables static membership, avoiding unnecessary rebalances.
 func WithInstanceID(instanceID string) Option {
-	return optionFunc(func(c *Consumer) error {
+	return optionFunc(func(c *KafkaConsumer) error {
 		if instanceID != "" {
 			c.config.kgoOpts = append(c.config.kgoOpts, kgo.InstanceID(instanceID))
 		}

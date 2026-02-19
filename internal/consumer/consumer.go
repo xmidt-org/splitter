@@ -28,8 +28,15 @@ var ErrPingingBroker = errors.New("error pinging kafka broker")
 var tickerInterval = 5 * time.Second
 
 // Consumer represents a high-throughput Kafka consumer using franz-go.
+
+type Consumer interface {
+	Start() error
+	Stop(ctx context.Context) error
+	IsRunning() bool
+}
+
 // It manages the consumer lifecycle, message polling, and graceful shutdown.
-type Consumer struct {
+type KafkaConsumer struct {
 	client        Client
 	clientId      string
 	handler       MessageHandler
@@ -53,11 +60,11 @@ type Consumer struct {
 // New creates a new Consumer with the provided options.
 // Required options: WithBrokers, WithTopics, WithGroupID, WithMessageHandler
 // Returns an error if required options are missing or if the client cannot be created.
-func New(opts ...Option) (*Consumer, error) {
+func New(opts ...Option) (Consumer, error) {
 	// Create consumer with initial config
 	ctx, cancel := context.WithCancel(context.Background())
 
-	consumer := &Consumer{
+	consumer := &KafkaConsumer{
 		config: &consumerConfig{
 			kgoOpts: make([]kgo.Opt, 0),
 		},
@@ -110,14 +117,15 @@ func New(opts ...Option) (*Consumer, error) {
 		cancel()
 		return nil, fmt.Errorf("failed to create kafka client: %w", err)
 	}
-	consumer.client = &kgoClientAdapter{Client: client}
+
+	consumer.client = client
 	return consumer, nil
 }
 
 // Start begins consuming messages from Kafka.
 // It starts a background goroutine that polls for messages and invokes the handler.
 // Returns an error if the consumer is already running or if Kafka connection fails.
-func (c *Consumer) Start() error {
+func (c *KafkaConsumer) Start() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -154,7 +162,7 @@ func (c *Consumer) Start() error {
 // Stop gracefully stops the consumer.
 // It waits for the current message processing to complete and commits final offsets.
 // The provided context controls the shutdown timeout.
-func (c *Consumer) Stop(ctx context.Context) error {
+func (c *KafkaConsumer) Stop(ctx context.Context) error {
 	c.mu.Lock()
 	if !c.running {
 		c.mu.Unlock()
@@ -197,7 +205,7 @@ func (c *Consumer) Stop(ctx context.Context) error {
 }
 
 // IsRunning returns true if the consumer is currently running.
-func (c *Consumer) IsRunning() bool {
+func (c *KafkaConsumer) IsRunning() bool {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.running
@@ -205,7 +213,7 @@ func (c *Consumer) IsRunning() bool {
 
 // pollLoop continuously polls for messages and processes them.
 // It runs in a background goroutine started by Start().
-func (c *Consumer) pollLoop() {
+func (c *KafkaConsumer) pollLoop() {
 	defer c.wg.Done()
 
 	for {
@@ -288,6 +296,7 @@ func (c *Consumer) pollLoop() {
 //
 // 5. This code does currently pause fetches if there are no successful writes after a configurable
 // amount of time.  But we will lose all records committed but not produced prior to the pause.
+// 6.  TODO - add transaction support to wrpkafka library
 func (c *Consumer) handleOutcome(outcome wrpkafka.Outcome, err error, record *kgo.Record) {
 	// if queued, attempted or accepted, mark for commit
 	if outcome != wrpkafka.Failed {
@@ -417,6 +426,6 @@ func (c *Consumer) HandlePublishEvent(event *wrpkafka.PublishEvent) {
 
 // emitEvent emits a log event to the configured emitter.
 // The emitter is never nil (defaults to no-op if not configured).
-func (c *Consumer) emitLog(level log.Level, message string, attrs map[string]any) {
+func (c *KafkaConsumer) emitLog(level log.Level, message string, attrs map[string]any) {
 	c.logEmitter.Notify(log.NewEvent(level, message, attrs))
 }

@@ -6,6 +6,7 @@ package consumer
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"log/slog"
 	"os"
 	"testing"
@@ -29,7 +30,7 @@ func TestOptionsTestSuite(t *testing.T) {
 }
 
 // Helper to create a basic consumer for testing
-func (s *OptionsTestSuite) createTestConsumer(opts ...Option) (*Consumer, error) {
+func (s *OptionsTestSuite) createTestConsumer(opts ...Option) (*KafkaConsumer, error) {
 	// Start with required options
 	baseOpts := []Option{
 		WithBrokers("localhost:9092"),
@@ -41,7 +42,32 @@ func (s *OptionsTestSuite) createTestConsumer(opts ...Option) (*Consumer, error)
 	}
 
 	allOpts := append(baseOpts, opts...)
-	return New(allOpts...)
+	consumer, err := New(allOpts...)
+	if err != nil {
+		return nil, err
+	}
+
+	// Type assert to get access to internal fields for testing
+	kafkaConsumer, ok := consumer.(*KafkaConsumer)
+	if !ok {
+		return nil, errors.New("expected *KafkaConsumer")
+	}
+	return kafkaConsumer, nil
+}
+
+// Helper to create a consumer with specific options and return concrete type for testing
+func (s *OptionsTestSuite) newKafkaConsumerForTest(opts ...Option) (*KafkaConsumer, error) {
+	consumer, err := New(opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	// Type assert to get access to internal fields for testing
+	kafkaConsumer, ok := consumer.(*KafkaConsumer)
+	if !ok {
+		return nil, errors.New("expected *KafkaConsumer")
+	}
+	return kafkaConsumer, nil
 }
 
 // Test Required Options
@@ -54,7 +80,7 @@ func (s *OptionsTestSuite) TestWithBrokers() {
 }
 
 func (s *OptionsTestSuite) TestWithBrokers_Multiple() {
-	consumer, err := New(
+	consumer, err := s.newKafkaConsumerForTest(
 		WithBrokers("broker1:9092", "broker2:9092", "broker3:9092"),
 		WithTopics("test-topic"),
 		WithGroupID("test-group"),
@@ -74,7 +100,7 @@ func (s *OptionsTestSuite) TestWithTopics() {
 }
 
 func (s *OptionsTestSuite) TestWithTopics_Multiple() {
-	consumer, err := New(
+	consumer, err := s.newKafkaConsumerForTest(
 		WithBrokers("localhost:9092"),
 		WithTopics("topic1", "topic2", "topic3"),
 		WithGroupID("test-group"),
@@ -99,7 +125,7 @@ func (s *OptionsTestSuite) TestWithMessageHandler() {
 		return wrpkafka.Attempted, nil
 	})
 
-	consumer, err := New(
+	consumer, err := s.newKafkaConsumerForTest(
 		WithBrokers("localhost:9092"),
 		WithTopics("test-topic"),
 		WithGroupID("test-group"),
