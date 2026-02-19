@@ -86,6 +86,10 @@ func provideConsumer(in ConsumerIn) (ConsumerOut, error) {
 		consumer.WithConnIdleTimeout(cfg.ConnIdleTimeout),
 		consumer.WithRequestTimeoutOverhead(cfg.RequestTimeoutOverhead),
 		consumer.WithConsumeFromTheBeginning(cfg.ConsumeFromBeginning),
+
+		// Fetch State Management
+		consumer.WithResumeDelaySeconds(cfg.ResumeDelaySeconds),
+		consumer.WithConsecutiveFailuresThreshold(cfg.ConsecutiveFailureThreshold),
 	}
 
 	// Create the consumer

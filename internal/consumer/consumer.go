@@ -48,13 +48,13 @@ type KafkaConsumer struct {
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
 
-	mu                    sync.RWMutex
-	running               bool
-	timeSinceLastSuccess  atomic.Int64
-	pauseThresholdSeconds int64
-	resumeDelaySeconds    int64
-	isPaused              atomic.Bool
-	unPauseAt             atomic.Int64
+	mu                          sync.RWMutex
+	running                     bool
+	consecutiveFailures         atomic.Int64
+	consecutiveFailureThreshold int
+	resumeDelaySeconds          int
+	isPaused                    atomic.Bool
+	unPauseAt                   atomic.Int64
 }
 
 // New creates a new Consumer with the provided options.
@@ -146,15 +146,19 @@ func (c *KafkaConsumer) Start() error {
 		"group_id": c.config.groupID,
 	})
 
-	c.timeSinceLastSuccess.Store(time.Now().Unix())
+	c.consecutiveFailures.Store(0)
 
 	// Start polling loops in background
 	c.running = true
 
 	c.wg.Add(1)
 	go c.pollLoop()
-	c.wg.Add(1)
-	go c.startManageFetchState()
+
+	// only start fetch state manager if thresholds are configured
+	if (c.consecutiveFailureThreshold > 0) && (c.resumeDelaySeconds > 0) {
+		c.wg.Add(1)
+		go c.startManageFetchState()
+	}
 
 	return nil
 }
@@ -298,18 +302,30 @@ func (c *KafkaConsumer) pollLoop() {
 // amount of time.  But we will lose all records committed but not produced prior to the pause.
 // 6.  TODO - add transaction support to wrpkafka library
 func (c *KafkaConsumer) handleOutcome(outcome wrpkafka.Outcome, err error, record *kgo.Record) {
-	// if queued, attempted or accepted, mark for commit
+	// if queued, attempted, accepted or a permanent error, mark for commit
 	if outcome != wrpkafka.Failed {
 		c.client.MarkCommitRecords(record)
 	} else if err != nil && !isRetryable(err) {
-		// if ProduceSync failed but is not retryable, mark for commit
 		c.client.MarkCommitRecords(record)
 	}
-	// do not mark failures with retryable errors for commit, but see notes above that this does not do much
-	// TODO - potentially implement a local retry queue for high QOS
 
+	// Accepted means the producer synchronously received an ack from the broker
+	// TODO - consider implementing a local retry queue for high QOS
 	if outcome == wrpkafka.Accepted {
-		c.timeSinceLastSuccess.Store(time.Now().Unix())
+		c.consecutiveFailures.Store(0)
+	}
+
+	c.handleRetryableError(err)
+}
+
+func (c *KafkaConsumer) handleRetryableError(err error) {
+	// if the error is retryable, increment consecutive failures
+	if isRetryable(err) {
+		c.consecutiveFailures.Add(1)
+		c.emitLog(log.LevelWarn, "retryable error from producer", map[string]any{
+			"error": err,
+			"count": c.consecutiveFailures.Load(),
+		})
 	}
 }
 
@@ -332,14 +348,12 @@ func (c *KafkaConsumer) startManageFetchState() {
 }
 
 func (c *KafkaConsumer) manageFetchState() {
-	now := time.Now().Unix()
-	lastSuccess := c.timeSinceLastSuccess.Load()
-	elapsed := now - lastSuccess
+	consecutiveFailures := c.consecutiveFailures.Load()
 
 	if c.isPaused.Load() {
-		// Resume if: 1) timer expired OR 2) recent success
+		// Resume if: 1) timer expired OR 2) recent success(es)
 		shouldResume := time.Now().After(time.Unix(c.unPauseAt.Load(), 0)) ||
-			elapsed < c.pauseThresholdSeconds
+			consecutiveFailures < int64(c.consecutiveFailureThreshold)
 
 		if shouldResume {
 			c.resumeFetchTopics()
@@ -348,7 +362,7 @@ func (c *KafkaConsumer) manageFetchState() {
 	}
 
 	// Not paused - check if we should pause
-	if elapsed >= c.pauseThresholdSeconds {
+	if consecutiveFailures >= int64(c.consecutiveFailureThreshold) {
 		c.pauseFetchTopics()
 	}
 }
@@ -396,7 +410,6 @@ func (c *KafkaConsumer) handleRecord(record *kgo.Record) (wrpkafka.Outcome, erro
 }
 
 func (c *KafkaConsumer) HandlePublishEvent(event *wrpkafka.PublishEvent) {
-
 	if event.Error != nil {
 		c.emitLog(log.LevelError, "message publish error", map[string]any{
 			"topic":     event.Topic,
@@ -410,10 +423,12 @@ func (c *KafkaConsumer) HandlePublishEvent(event *wrpkafka.PublishEvent) {
 		})
 	}
 
-	// update last success time
+	// clean consecutive failures on success
 	if event.Error == nil {
-		c.timeSinceLastSuccess.Store(time.Now().Unix())
+		c.consecutiveFailures.Store(0)
 	}
+
+	c.handleRetryableError(event.Error)
 }
 
 // emitEvent emits a log event to the configured emitter.

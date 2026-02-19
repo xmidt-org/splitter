@@ -43,14 +43,14 @@ func (s *ConsumerTestSuite) SetupTest() {
 			topics:  []string{"test-topic"},
 			groupID: "test-group",
 		},
-		logEmitter:            log.NewNoop(),
-		metricEmitter:         metrics.NewNoop(),
-		ctx:                   ctx,
-		cancel:                cancel,
-		pauseThresholdSeconds: 60,
-		resumeDelaySeconds:    30,
+		logEmitter:                  log.NewNoop(),
+		metricEmitter:               metrics.NewNoop(),
+		ctx:                         ctx,
+		cancel:                      cancel,
+		consecutiveFailureThreshold: 60,
+		resumeDelaySeconds:          30,
 	}
-	s.consumer.timeSinceLastSuccess.Store(time.Now().Unix())
+	s.consumer.consecutiveFailures.Store(time.Now().Unix())
 }
 
 func (s *ConsumerTestSuite) TearDownTest() {
@@ -277,60 +277,68 @@ func (s *ConsumerTestSuite) TestHandleOutcome() {
 	}
 
 	tests := []struct {
-		name          string
-		outcome       wrpkafka.Outcome
-		err           error
-		expectCommit  bool
-		expectSuccess bool
+		name                     string
+		outcome                  wrpkafka.Outcome
+		err                      error
+		expectCommit             bool
+		expectSuccess            bool
+		expectHigherFailureCount bool
 	}{
 		{
-			name:          "accepted outcome - commit and update success time",
-			outcome:       wrpkafka.Accepted,
-			err:           nil,
-			expectCommit:  true,
-			expectSuccess: true,
+			name:                     "accepted outcome - commit and update success time",
+			outcome:                  wrpkafka.Accepted,
+			err:                      nil,
+			expectCommit:             true,
+			expectSuccess:            true,
+			expectHigherFailureCount: false,
 		},
 		{
-			name:          "attempted outcome - commit",
-			outcome:       wrpkafka.Attempted,
-			err:           nil,
-			expectCommit:  true,
-			expectSuccess: false,
+			name:                     "attempted outcome - commit",
+			outcome:                  wrpkafka.Attempted,
+			err:                      nil,
+			expectCommit:             true,
+			expectSuccess:            false,
+			expectHigherFailureCount: false,
 		},
 		{
-			name:          "queued outcome - commit",
-			outcome:       wrpkafka.Queued,
-			err:           nil,
-			expectCommit:  true,
-			expectSuccess: false,
+			name:                     "queued outcome - commit",
+			outcome:                  wrpkafka.Queued,
+			err:                      nil,
+			expectCommit:             true,
+			expectSuccess:            false,
+			expectHigherFailureCount: false,
 		},
 		{
-			name:          "failed with non-retryable error - commit",
-			outcome:       wrpkafka.Failed,
-			err:           errors.New("permanent error"),
-			expectCommit:  true,
-			expectSuccess: false,
+			name:                     "failed with non-retryable error - commit",
+			outcome:                  wrpkafka.Failed,
+			err:                      errors.New("permanent error"),
+			expectCommit:             true,
+			expectSuccess:            false,
+			expectHigherFailureCount: false,
 		},
 		{
-			name:          "failed with timeout - no commit",
-			outcome:       wrpkafka.Failed,
-			err:           context.DeadlineExceeded,
-			expectCommit:  false,
-			expectSuccess: false,
+			name:                     "failed with timeout - no commit",
+			outcome:                  wrpkafka.Failed,
+			err:                      context.DeadlineExceeded,
+			expectCommit:             false,
+			expectSuccess:            false,
+			expectHigherFailureCount: true,
 		},
 		{
-			name:          "failed with request timeout - no commit",
-			outcome:       wrpkafka.Failed,
-			err:           kerr.RequestTimedOut,
-			expectCommit:  false,
-			expectSuccess: false,
+			name:                     "failed with request timeout - no commit",
+			outcome:                  wrpkafka.Failed,
+			err:                      kerr.RequestTimedOut,
+			expectCommit:             false,
+			expectSuccess:            false,
+			expectHigherFailureCount: true,
 		},
 		{
-			name:          "failed with buffer full - no commit",
-			outcome:       wrpkafka.Failed,
-			err:           kgo.ErrMaxBuffered,
-			expectCommit:  false,
-			expectSuccess: false,
+			name:                     "failed with buffer full - no commit",
+			outcome:                  wrpkafka.Failed,
+			err:                      kgo.ErrMaxBuffered,
+			expectCommit:             false,
+			expectSuccess:            false,
+			expectHigherFailureCount: true,
 		},
 	}
 
@@ -339,8 +347,8 @@ func (s *ConsumerTestSuite) TestHandleOutcome() {
 			s.mockClient = &MockClient{}
 			s.consumer.client = s.mockClient
 
-			// Record time before handling
-			timeBefore := s.consumer.timeSinceLastSuccess.Load()
+			// for testing purposes, make sure we have non-zero consecutive failures
+			failuresBefore := s.consumer.consecutiveFailures.Add(1)
 
 			// Sleep to ensure Unix second advances for success tests
 			if tt.expectSuccess {
@@ -356,12 +364,12 @@ func (s *ConsumerTestSuite) TestHandleOutcome() {
 
 			s.consumer.handleOutcome(tt.outcome, tt.err, record)
 
-			// Check if success time was updated
-			timeAfter := s.consumer.timeSinceLastSuccess.Load()
+			// Check if consecutive failures were cleared
+			failuresAfter := s.consumer.consecutiveFailures.Load()
 			if tt.expectSuccess {
-				s.GreaterOrEqual(timeAfter, timeBefore+1, "success time should be updated by at least 1 second")
-			} else {
-				s.Equal(timeBefore, timeAfter, "success time should not be updated")
+				s.Equal(int64(0), failuresAfter, "consecutive failures should be cleared on success")
+			} else if tt.expectHigherFailureCount {
+				s.Greater(failuresAfter, failuresBefore, "consecutive failures should be incremented")
 			}
 
 			s.mockClient.AssertExpectations(s.T())
@@ -414,56 +422,56 @@ func (s *ConsumerTestSuite) TestIsRetryable() {
 // TestManageFetchState tests pause/resume state management
 func (s *ConsumerTestSuite) TestManageFetchState() {
 	tests := []struct {
-		name             string
-		isPaused         bool
-		timeSinceSuccess int64
-		pauseThreshold   int64
-		unPauseAt        int64
-		expectPause      bool
-		expectResume     bool
+		name                        string
+		isPaused                    bool
+		consecutiveFailures         int64
+		consecutiveFailureThreshold int
+		unPauseAt                   int64
+		expectPause                 bool
+		expectResume                bool
 	}{
 		{
-			name:             "should pause when threshold exceeded",
-			isPaused:         false,
-			timeSinceSuccess: 120, // 2 minutes ago
-			pauseThreshold:   60,  // 1 minute threshold
-			expectPause:      true,
-			expectResume:     false,
+			name:                        "should pause when threshold exceeded",
+			isPaused:                    false,
+			consecutiveFailures:         120,
+			consecutiveFailureThreshold: 60,
+			expectPause:                 true,
+			expectResume:                false,
 		},
 		{
-			name:             "should not pause when under threshold",
-			isPaused:         false,
-			timeSinceSuccess: 30, // 30 seconds ago
-			pauseThreshold:   60, // 1 minute threshold
-			expectPause:      false,
-			expectResume:     false,
+			name:                        "should not pause when under threshold",
+			isPaused:                    false,
+			consecutiveFailures:         30,
+			consecutiveFailureThreshold: 60,
+			expectPause:                 false,
+			expectResume:                false,
 		},
 		{
-			name:             "should resume when timer expired",
-			isPaused:         true,
-			timeSinceSuccess: 120,
-			pauseThreshold:   60,
-			unPauseAt:        time.Now().Add(-5 * time.Second).Unix(), // Expired
-			expectPause:      false,
-			expectResume:     true,
+			name:                        "should resume when timer expired",
+			isPaused:                    true,
+			consecutiveFailures:         120,
+			consecutiveFailureThreshold: 60,
+			unPauseAt:                   time.Now().Add(-5 * time.Second).Unix(), // Expired
+			expectPause:                 false,
+			expectResume:                true,
 		},
 		{
-			name:             "should resume when recent success while paused",
-			isPaused:         true,
-			timeSinceSuccess: 30,                                      // Recent success
-			pauseThreshold:   60,                                      // Under threshold
-			unPauseAt:        time.Now().Add(30 * time.Second).Unix(), // Not expired
-			expectPause:      false,
-			expectResume:     true,
+			name:                        "should resume when recent success while paused",
+			isPaused:                    true,
+			consecutiveFailures:         0,                                       // Recent success
+			consecutiveFailureThreshold: 60,                                      // Under threshold
+			unPauseAt:                   time.Now().Add(30 * time.Second).Unix(), // Not expired
+			expectPause:                 false,
+			expectResume:                true,
 		},
 		{
-			name:             "should stay paused when timer not expired",
-			isPaused:         true,
-			timeSinceSuccess: 120,
-			pauseThreshold:   60,
-			unPauseAt:        time.Now().Add(30 * time.Second).Unix(), // Future
-			expectPause:      false,
-			expectResume:     false,
+			name:                        "should stay paused when timer not expired",
+			isPaused:                    true,
+			consecutiveFailures:         120,
+			consecutiveFailureThreshold: 60,
+			unPauseAt:                   time.Now().Add(30 * time.Second).Unix(), // Future
+			expectPause:                 false,
+			expectResume:                false,
 		},
 	}
 
@@ -474,8 +482,8 @@ func (s *ConsumerTestSuite) TestManageFetchState() {
 
 			// Setup state
 			s.consumer.isPaused.Store(tt.isPaused)
-			s.consumer.timeSinceLastSuccess.Store(time.Now().Unix() - tt.timeSinceSuccess)
-			s.consumer.pauseThresholdSeconds = tt.pauseThreshold
+			s.consumer.consecutiveFailures.Store(tt.consecutiveFailures)
+			s.consumer.consecutiveFailureThreshold = tt.consecutiveFailureThreshold
 			s.consumer.unPauseAt.Store(tt.unPauseAt)
 
 			if tt.expectPause {
@@ -562,9 +570,10 @@ func (s *ConsumerTestSuite) TestResumeFetchTopics() {
 // TestHandlePublishEvent tests publish event handling
 func (s *ConsumerTestSuite) TestHandlePublishEvent() {
 	tests := []struct {
-		name          string
-		event         *wrpkafka.PublishEvent
-		expectSuccess bool
+		name                     string
+		event                    *wrpkafka.PublishEvent
+		expectSuccess            bool
+		expectHigherFailureCount bool
 	}{
 		{
 			name: "successful publish",
@@ -572,32 +581,43 @@ func (s *ConsumerTestSuite) TestHandlePublishEvent() {
 				Topic: "test-topic",
 				Error: nil,
 			},
-			expectSuccess: true,
+			expectSuccess:            true,
+			expectHigherFailureCount: false,
 		},
 		{
-			name: "failed publish",
+			name: "failed publish with permanent error",
 			event: &wrpkafka.PublishEvent{
 				Topic: "test-topic",
-				Error: errors.New("publish failed"),
+				Error: errors.New("permanent error"),
 			},
-			expectSuccess: false,
+			expectSuccess:            false,
+			expectHigherFailureCount: false,
+		},
+		{
+			name: "failed publish with retryable error",
+			event: &wrpkafka.PublishEvent{
+				Topic: "test-topic",
+				Error: kerr.RequestTimedOut,
+			},
+			expectSuccess:            false,
+			expectHigherFailureCount: true,
 		},
 	}
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			timeBefore := s.consumer.timeSinceLastSuccess.Load()
+			failuresBefore := s.consumer.consecutiveFailures.Add(1)
 
 			// Sleep to ensure Unix second advances
 			time.Sleep(1100 * time.Millisecond)
 
 			s.consumer.HandlePublishEvent(tt.event)
 
-			timeAfter := s.consumer.timeSinceLastSuccess.Load()
+			failuresAfter := s.consumer.consecutiveFailures.Load()
 			if tt.expectSuccess {
-				s.GreaterOrEqual(timeAfter, timeBefore+1, "success time should be updated by at least 1 second")
-			} else {
-				s.Equal(timeBefore, timeAfter, "success time should not be updated")
+				s.Equal(int64(0), failuresAfter, "consecutive failures should be cleared on success")
+			} else if tt.expectHigherFailureCount {
+				s.Greater(failuresAfter, failuresBefore, "consecutive failures should be incremented")
 			}
 		})
 	}

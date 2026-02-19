@@ -579,3 +579,23 @@ func WithInstanceID(instanceID string) Option {
 		return nil
 	})
 }
+
+// number of consecutive failures due to retryable
+// errors before consumer fetches are paused.  If set to 0, the consumer
+// will never pause fetches.
+func WithConsecutiveFailuresThreshold(threshold int) Option {
+	return optionFunc(func(c *KafkaConsumer) error {
+		c.consecutiveFailureThreshold = threshold
+		return nil
+	})
+}
+
+// the number of seconds after which the consumer will automatically
+// resume fetching if fetching is paused. If set to 0, the consumer
+// will never pause fetches.
+func WithResumeDelaySeconds(seconds int) Option {
+	return optionFunc(func(c *KafkaConsumer) error {
+		c.resumeDelaySeconds = seconds
+		return nil
+	})
+}
