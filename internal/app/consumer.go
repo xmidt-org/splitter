@@ -12,8 +12,6 @@ import (
 	"xmidt-org/splitter/internal/observe"
 	"xmidt-org/splitter/internal/publisher"
 
-	"github.com/twmb/franz-go/pkg/kgo"
-	"github.com/xmidt-org/wrpkafka"
 	"go.uber.org/fx"
 )
 
@@ -52,7 +50,6 @@ func provideConsumer(in ConsumerIn) (ConsumerOut, error) {
 		consumer.WithBrokers(cfg.Brokers...),
 		consumer.WithTopics(cfg.Topics...),
 		consumer.WithGroupID(cfg.GroupID),
-
 
 		// Message handler
 		consumer.WithMessageHandler(consumer.MessageHandlerFunc(handler.HandleMessage)),

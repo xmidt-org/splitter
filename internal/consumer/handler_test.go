@@ -416,8 +416,8 @@ func TestMessageHandlerFunc(t *testing.T) {
 	}{
 		{
 			name: "successful_handler_func",
-			handlerFunc: func(ctx context.Context, record *kgo.Record) error {
-				return nil
+			handlerFunc: func(ctx context.Context, record *kgo.Record) (wrpkafka.Outcome, error) {
+				return wrpkafka.Accepted, nil
 			},
 			record:      createKafkaRecord("test-topic", []byte("key"), []byte("value")),
 			expectedErr: nil,
@@ -425,8 +425,8 @@ func TestMessageHandlerFunc(t *testing.T) {
 		},
 		{
 			name: "handler_func_with_error",
-			handlerFunc: func(ctx context.Context, record *kgo.Record) error {
-				return errors.New("handler error")
+			handlerFunc: func(ctx context.Context, record *kgo.Record) (wrpkafka.Outcome, error) {
+				return wrpkafka.Failed, errors.New("handler error")
 			},
 			record:      createKafkaRecord("test-topic", []byte("key"), []byte("value")),
 			expectedErr: errors.New("handler error"),
@@ -434,11 +434,11 @@ func TestMessageHandlerFunc(t *testing.T) {
 		},
 		{
 			name: "handler_func_with_context_check",
-			handlerFunc: func(ctx context.Context, record *kgo.Record) error {
+			handlerFunc: func(ctx context.Context, record *kgo.Record) (wrpkafka.Outcome, error) {
 				if record.Topic != "expected-topic" {
-					return errors.New("unexpected topic")
+					return wrpkafka.Failed, errors.New("unexpected topic")
 				}
-				return nil
+				return wrpkafka.Accepted, nil
 			},
 			record:      createKafkaRecord("unexpected-topic", []byte("key"), []byte("value")),
 			expectedErr: errors.New("unexpected topic"),
@@ -449,7 +449,7 @@ func TestMessageHandlerFunc(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
-			err := tt.handlerFunc.HandleMessage(ctx, tt.record)
+			_, err := tt.handlerFunc.HandleMessage(ctx, tt.record)
 
 			if tt.expectedErr != nil {
 				assert.Error(t, err, tt.description)
@@ -476,14 +476,14 @@ func TestWRPMessageHandlerEdgeCases(t *testing.T) {
 				ctx := context.Background()
 
 				// Create handler that would handle nil record
-				handlerFunc := MessageHandlerFunc(func(ctx context.Context, record *kgo.Record) error {
+				handlerFunc := MessageHandlerFunc(func(ctx context.Context, record *kgo.Record) (wrpkafka.Outcome, error) {
 					if record == nil {
-						return errors.New("nil record")
+						return wrpkafka.Failed, errors.New("nil record")
 					}
-					return nil
+					return wrpkafka.Accepted, nil
 				})
 
-				err := handlerFunc.HandleMessage(ctx, nil)
+				_, err := handlerFunc.HandleMessage(ctx, nil)
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), "nil record")
 			},

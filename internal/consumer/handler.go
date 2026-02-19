@@ -5,6 +5,7 @@ package consumer
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"xmidt-org/splitter/internal/log"
@@ -13,8 +14,12 @@ import (
 	"xmidt-org/splitter/internal/publisher"
 
 	"github.com/twmb/franz-go/pkg/kgo"
-	"github.com/xmidt-org/wrpkafka"
 	"github.com/xmidt-org/wrp-go/v5"
+	"github.com/xmidt-org/wrpkafka"
+)
+
+var (
+	ErrMalformedMsg = errors.New("malformed wrp message")
 )
 
 // MessageHandler defines the interface for handling Kafka messages.
@@ -74,7 +79,7 @@ func NewWRPMessageHandler(config WRPMessageHandlerConfig) *WRPMessageHandler {
 
 // HandleMessage processes a Kafka message containing a WRP message and routes it
 // to the appropriate topic
-func (h *WRPMessageHandler) HandleMessage(ctx context.Context, record *kgo.Record) error {
+func (h *WRPMessageHandler) HandleMessage(ctx context.Context, record *kgo.Record) (wrpkafka.Outcome, error) {
 
 	// Decode WRP message
 	var msg wrp.Message
@@ -84,7 +89,7 @@ func (h *WRPMessageHandler) HandleMessage(ctx context.Context, record *kgo.Recor
 		h.emitLog(log.LevelWarn, "decode WRP message", map[string]any{
 			"error": err.Error(),
 		})
-		return nil
+		return wrpkafka.Failed, ErrMalformedMsg
 	}
 
 	// Log the message being processed
@@ -101,14 +106,14 @@ func (h *WRPMessageHandler) HandleMessage(ctx context.Context, record *kgo.Recor
 		h.emitLog(log.LevelError, "failed to produce WRP message", map[string]any{
 			"error": err.Error(),
 		})
-		return fmt.Errorf("produce failed: %w", err)
+		return outcome, fmt.Errorf("produce failed: %w", err)
 	}
 
 	h.emitLog(log.LevelDebug, "successfully routed WRP message", map[string]any{
 		"outcome": outcome.String(),
 	})
 
-	return nil
+	return outcome, nil
 }
 
 // Close shuts down the message handler and its producer.

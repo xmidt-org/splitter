@@ -23,7 +23,7 @@ import (
 type ConsumerTestSuite struct {
 	suite.Suite
 	mockClient *MockClient
-	consumer   *Consumer
+	consumer   *KafkaConsumer
 }
 
 func TestConsumerTestSuite(t *testing.T) {
@@ -35,7 +35,7 @@ func (s *ConsumerTestSuite) SetupTest() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	s.consumer = &Consumer{
+	s.consumer = &KafkaConsumer{
 		client:  s.mockClient,
 		handler: &MockHandler{},
 		config: &consumerConfig{
@@ -122,18 +122,19 @@ func (s *ConsumerTestSuite) TestNew() {
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
 			consumer, err := New(tt.opts...)
+			kafkaConsumer := consumer.(*KafkaConsumer)
 
 			if tt.expectError {
 				s.Error(err)
 				if tt.errorMsg != "" {
 					s.Contains(err.Error(), tt.errorMsg)
 				}
-				s.Nil(consumer)
+				s.Nil(kafkaConsumer)
 			} else {
 				s.NoError(err)
-				s.NotNil(consumer)
-				if consumer != nil {
-					consumer.cancel()
+				s.NotNil(kafkaConsumer)
+				if kafkaConsumer != nil {
+					kafkaConsumer.cancel()
 				}
 			}
 		})

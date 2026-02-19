@@ -118,7 +118,7 @@ func New(opts ...Option) (Consumer, error) {
 		return nil, fmt.Errorf("failed to create kafka client: %w", err)
 	}
 
-	consumer.client = client
+	consumer.client = &kgoClientAdapter{Client: client}
 	return consumer, nil
 }
 
@@ -297,7 +297,7 @@ func (c *KafkaConsumer) pollLoop() {
 // 5. This code does currently pause fetches if there are no successful writes after a configurable
 // amount of time.  But we will lose all records committed but not produced prior to the pause.
 // 6.  TODO - add transaction support to wrpkafka library
-func (c *Consumer) handleOutcome(outcome wrpkafka.Outcome, err error, record *kgo.Record) {
+func (c *KafkaConsumer) handleOutcome(outcome wrpkafka.Outcome, err error, record *kgo.Record) {
 	// if queued, attempted or accepted, mark for commit
 	if outcome != wrpkafka.Failed {
 		c.client.MarkCommitRecords(record)
@@ -313,15 +313,7 @@ func (c *Consumer) handleOutcome(outcome wrpkafka.Outcome, err error, record *kg
 	}
 }
 
-func isRetryable(err error) bool {
-	return errors.Is(err, context.DeadlineExceeded) ||
-		errors.Is(err, kerr.RequestTimedOut) ||
-		errors.Is(err, kgo.ErrMaxBuffered) ||
-		errors.Is(err, net.ErrClosed) ||
-		errors.Is(err, io.EOF)
-}
-
-func (c *Consumer) startManageFetchState() {
+func (c *KafkaConsumer) startManageFetchState() {
 	defer c.wg.Done() // Decrement when this goroutine exits
 
 	ticker := time.NewTicker(tickerInterval)
@@ -339,7 +331,7 @@ func (c *Consumer) startManageFetchState() {
 	}
 }
 
-func (c *Consumer) manageFetchState() {
+func (c *KafkaConsumer) manageFetchState() {
 	now := time.Now().Unix()
 	lastSuccess := c.timeSinceLastSuccess.Load()
 	elapsed := now - lastSuccess
@@ -361,7 +353,7 @@ func (c *Consumer) manageFetchState() {
 	}
 }
 
-func (c *Consumer) pauseFetchTopics() {
+func (c *KafkaConsumer) pauseFetchTopics() {
 	if c.isPaused.Load() {
 		return
 	}
@@ -378,7 +370,7 @@ func (c *Consumer) pauseFetchTopics() {
 	})
 }
 
-func (c *Consumer) resumeFetchTopics() {
+func (c *KafkaConsumer) resumeFetchTopics() {
 	c.emitLog(log.LevelInfo, "resuming fetches after pause", map[string]any{})
 	c.client.ResumeFetchTopics(c.config.topics...)
 	c.isPaused.Store(false)
@@ -394,7 +386,7 @@ func (c *Consumer) resumeFetchTopics() {
 // handleRecord processes a single record using the configured handler.
 // not that if the buffer is full, franz-go will block on produce until the delivery timeout,
 // , so this call should be synchonous and also block to avoid consuming more messages
-func (c *Consumer) handleRecord(record *kgo.Record) (wrpkafka.Outcome, error) {
+func (c *KafkaConsumer) handleRecord(record *kgo.Record) (wrpkafka.Outcome, error) {
 	// Create a context for this message
 	// In a real implementation, this would include tracing context
 	ctx := context.Background()
@@ -403,7 +395,7 @@ func (c *Consumer) handleRecord(record *kgo.Record) (wrpkafka.Outcome, error) {
 	return c.handler.HandleMessage(ctx, record)
 }
 
-func (c *Consumer) HandlePublishEvent(event *wrpkafka.PublishEvent) {
+func (c *KafkaConsumer) HandlePublishEvent(event *wrpkafka.PublishEvent) {
 
 	if event.Error != nil {
 		c.emitLog(log.LevelError, "message publish error", map[string]any{
@@ -428,4 +420,12 @@ func (c *Consumer) HandlePublishEvent(event *wrpkafka.PublishEvent) {
 // The emitter is never nil (defaults to no-op if not configured).
 func (c *KafkaConsumer) emitLog(level log.Level, message string, attrs map[string]any) {
 	c.logEmitter.Notify(log.NewEvent(level, message, attrs))
+}
+
+func isRetryable(err error) bool {
+	return errors.Is(err, context.DeadlineExceeded) ||
+		errors.Is(err, kerr.RequestTimedOut) ||
+		errors.Is(err, kgo.ErrMaxBuffered) ||
+		errors.Is(err, net.ErrClosed) ||
+		errors.Is(err, io.EOF)
 }
