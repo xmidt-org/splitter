@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 
+	"xmidt-org/splitter/internal/bucket"
 	"xmidt-org/splitter/internal/configuration"
 	"xmidt-org/splitter/internal/consumer"
 	"xmidt-org/splitter/internal/publisher"
@@ -36,6 +37,7 @@ type Config struct {
 	Servers           Servers
 	Producer          publisher.Config
 	Consumer          consumer.Config
+	Buckets           bucket.Config
 }
 
 type Servers struct {

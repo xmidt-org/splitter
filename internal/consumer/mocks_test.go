@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/mock"
 	"github.com/twmb/franz-go/pkg/kgo"
+	"github.com/xmidt-org/wrp-go/v5"
 	"github.com/xmidt-org/wrpkafka"
 )
 
@@ -68,9 +69,9 @@ type MockHandler struct {
 	mock.Mock
 }
 
-func (m *MockHandler) HandleMessage(ctx context.Context, record *kgo.Record) (wrpkafka.Outcome, error) {
+func (m *MockHandler) HandleMessage(ctx context.Context, record *kgo.Record) (Outcome, error) {
 	args := m.Called(ctx, record)
-	return args.Get(0).(wrpkafka.Outcome), args.Error(1)
+	return args.Get(0).(Outcome), args.Error(1)
 }
 
 // MockFetches is a testify mock for the Fetches interface.
@@ -86,3 +87,24 @@ func (m *MockFetches) Errors() []*kgo.FetchError {
 func (m *MockFetches) EachRecord(fn func(*kgo.Record)) {
 	m.Called(fn)
 }
+
+type MockBuckets struct {
+	mock.Mock
+}
+
+func (m *MockBuckets) IsInTargetBucket(msg *wrp.Message) bool {
+	args := m.Called(msg)
+	return args.Bool(0)
+}
+
+// MockPublisher implements publisher.Publisher for testing
+type MockPublisher struct {
+	mock.Mock
+}
+
+func (m *MockPublisher) Produce(ctx context.Context, msg *wrp.Message) (wrpkafka.Outcome, error) {
+	args := m.Called(ctx, msg)
+	return args.Get(0).(wrpkafka.Outcome), args.Error(1)
+}
+func (m *MockPublisher) Start() error                   { return nil }
+func (m *MockPublisher) Stop(ctx context.Context) error { return nil }

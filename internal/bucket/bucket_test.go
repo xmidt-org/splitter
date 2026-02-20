@@ -1,0 +1,134 @@
+// SPDX-FileCopyrightText: 2026 Comcast Cable Communications Management, LLC
+// SPDX-License-Identifier: Apache-2.0
+
+package bucket
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
+	"github.com/xmidt-org/wrp-go/v5"
+)
+
+type BucketsSuite struct {
+	suite.Suite
+	buckets    *Buckets
+	bucketDefs []BucketConfig
+}
+
+func (s *BucketsSuite) SetupTest() {
+	s.bucketDefs = []BucketConfig{
+		{"bucketA", 0.33},
+		{"bucketB", 0.66},
+		{"bucketC", 1.0},
+	}
+	cfg := Config{
+		TargetBucket:     "bucketB",
+		PossibleBuckets:  s.bucketDefs,
+		PartitionKeyType: DeviceIdKeyName,
+	}
+	var err error
+	buckets, err := NewBuckets(cfg)
+	s.NoError(err)
+	s.buckets = buckets.(*Buckets)
+	s.Require().NoError(err)
+}
+
+func (s *BucketsSuite) TestNewBuckets_TargetIndex() {
+	assert.Equal(s.T(), 1, s.buckets.targetBucketIndex)
+	assert.Equal(s.T(), 3, len(s.buckets.buckets))
+	assert.Equal(s.T(), 3, len(s.buckets.thresholds))
+}
+
+func (s *BucketsSuite) TestNewBuckets_InvalidTarget() {
+	cfg := Config{
+		TargetBucket:     "notfound",
+		PossibleBuckets:  s.bucketDefs,
+		PartitionKeyType: DeviceIdKeyName,
+	}
+	_, err := NewBuckets(cfg)
+	assert.Error(s.T(), err)
+}
+
+func (s *BucketsSuite) TestNewBuckets_InvalidKeyType() {
+	cfg := Config{
+		TargetBucket:     "bucketA",
+		PossibleBuckets:  s.bucketDefs,
+		PartitionKeyType: "unknown_key",
+	}
+	_, err := NewBuckets(cfg)
+	assert.Error(s.T(), err)
+}
+
+func (s *BucketsSuite) TestNewBuckets_NoBuckets() {
+	cfg := Config{}
+	_, err := NewBuckets(cfg)
+	assert.NoError(s.T(), err)
+}
+
+func (s *BucketsSuite) TestNoBuckets() {
+	buckets, err := NewBuckets(Config{})
+	assert.NoError(s.T(), err)
+	msg := &wrp.Message{Source: "mac:112233445566"}
+	assert.True(s.T(), buckets.IsInTargetBucket(msg))
+}
+
+func (s *BucketsSuite) TestIsInBucket_True() {
+	msg := &wrp.Message{Source: "mac:112233445566"}
+	partitionKey, _ := s.buckets.getPartitionKey(msg)
+	partitioner := NewPartitioner()
+	bucket, _ := partitioner.Partition(partitionKey, s.buckets.thresholds)
+	s.buckets.targetBucketIndex = bucket
+	assert.True(s.T(), s.buckets.IsInTargetBucket(msg))
+}
+
+func (s *BucketsSuite) TestIsInBucket_False() {
+	msg := &wrp.Message{Source: "mac:112233445566"}
+	partitionKey, _ := s.buckets.getPartitionKey(msg)
+	partitioner := NewPartitioner()
+	bucket, _ := partitioner.Partition(partitionKey, s.buckets.thresholds)
+	s.buckets.targetBucketIndex = (bucket + 1) % len(s.buckets.thresholds)
+	assert.False(s.T(), s.buckets.IsInTargetBucket(msg))
+}
+
+func (s *BucketsSuite) TestIsInBucket_InvalidKey() {
+	msg := &wrp.Message{Source: "invalid"}
+	assert.False(s.T(), s.buckets.IsInTargetBucket(msg))
+}
+
+func (s *BucketsSuite) TestGetPartitionKey_DeviceId() {
+	msg := &wrp.Message{Source: "mac:112233445566"}
+	key, err := s.buckets.getPartitionKey(msg)
+	assert.NoError(s.T(), err)
+	assert.Equal(s.T(), "mac:112233445566", key)
+}
+
+func (s *BucketsSuite) TestGetPartitionKey_InvalidType() {
+	b := s.buckets
+	b.partitionKeyType = -1
+	msg := &wrp.Message{Source: "mac:112233445566"}
+	_, err := b.getPartitionKey(msg)
+	assert.Error(s.T(), err)
+}
+
+func (s *BucketsSuite) TestParseDeviceId_Invalid() {
+	msg := &wrp.Message{Source: "not-a-device-id"}
+	_, err := parseDeviceId(msg)
+	assert.Error(s.T(), err)
+}
+
+func (s *BucketsSuite) TestGetPartitionKeyType_Valid() {
+	kt, err := getPartitionKeyType(DeviceIdKeyName)
+	assert.NoError(s.T(), err)
+	assert.Equal(s.T(), DeviceId, kt)
+}
+
+func (s *BucketsSuite) TestGetPartitionKeyType_Invalid() {
+	_, err := getPartitionKeyType("bad_key")
+	assert.Error(s.T(), err)
+}
+
+func TestBucketsSuite(t *testing.T) {
+	suite.Run(t, new(BucketsSuite))
+}

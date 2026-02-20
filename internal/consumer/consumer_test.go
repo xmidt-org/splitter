@@ -278,7 +278,7 @@ func (s *ConsumerTestSuite) TestHandleOutcome() {
 
 	tests := []struct {
 		name                     string
-		outcome                  wrpkafka.Outcome
+		outcome                  Outcome
 		err                      error
 		expectCommit             bool
 		expectSuccess            bool
@@ -286,7 +286,7 @@ func (s *ConsumerTestSuite) TestHandleOutcome() {
 	}{
 		{
 			name:                     "accepted outcome - commit and update success time",
-			outcome:                  wrpkafka.Accepted,
+			outcome:                  Accepted,
 			err:                      nil,
 			expectCommit:             true,
 			expectSuccess:            true,
@@ -294,7 +294,7 @@ func (s *ConsumerTestSuite) TestHandleOutcome() {
 		},
 		{
 			name:                     "attempted outcome - commit",
-			outcome:                  wrpkafka.Attempted,
+			outcome:                  Attempted,
 			err:                      nil,
 			expectCommit:             true,
 			expectSuccess:            false,
@@ -302,7 +302,7 @@ func (s *ConsumerTestSuite) TestHandleOutcome() {
 		},
 		{
 			name:                     "queued outcome - commit",
-			outcome:                  wrpkafka.Queued,
+			outcome:                  Queued,
 			err:                      nil,
 			expectCommit:             true,
 			expectSuccess:            false,
@@ -310,7 +310,7 @@ func (s *ConsumerTestSuite) TestHandleOutcome() {
 		},
 		{
 			name:                     "failed with non-retryable error - commit",
-			outcome:                  wrpkafka.Failed,
+			outcome:                  Failed,
 			err:                      errors.New("permanent error"),
 			expectCommit:             true,
 			expectSuccess:            false,
@@ -318,7 +318,7 @@ func (s *ConsumerTestSuite) TestHandleOutcome() {
 		},
 		{
 			name:                     "failed with timeout - no commit",
-			outcome:                  wrpkafka.Failed,
+			outcome:                  Failed,
 			err:                      context.DeadlineExceeded,
 			expectCommit:             false,
 			expectSuccess:            false,
@@ -326,7 +326,7 @@ func (s *ConsumerTestSuite) TestHandleOutcome() {
 		},
 		{
 			name:                     "failed with request timeout - no commit",
-			outcome:                  wrpkafka.Failed,
+			outcome:                  Failed,
 			err:                      kerr.RequestTimedOut,
 			expectCommit:             false,
 			expectSuccess:            false,
@@ -334,7 +334,7 @@ func (s *ConsumerTestSuite) TestHandleOutcome() {
 		},
 		{
 			name:                     "failed with buffer full - no commit",
-			outcome:                  wrpkafka.Failed,
+			outcome:                  Failed,
 			err:                      kgo.ErrMaxBuffered,
 			expectCommit:             false,
 			expectSuccess:            false,
@@ -673,8 +673,8 @@ func (s *ConsumerTestSuite) TestPollLoop() {
 					fn := args.Get(0).(func(*kgo.Record))
 					rec1 := &kgo.Record{Topic: "test", Partition: 0, Offset: 0}
 					rec2 := &kgo.Record{Topic: "test", Partition: 0, Offset: 1}
-					mh.On("HandleMessage", mock.Anything, rec1).Return(wrpkafka.Accepted, nil).Once()
-					mh.On("HandleMessage", mock.Anything, rec2).Return(wrpkafka.Accepted, nil).Once()
+					mh.On("HandleMessage", mock.Anything, rec1).Return(Accepted, nil).Once()
+					mh.On("HandleMessage", mock.Anything, rec2).Return(Accepted, nil).Once()
 					fn(rec1)
 					fn(rec2)
 				})

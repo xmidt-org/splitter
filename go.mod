@@ -4,6 +4,7 @@ go 1.25.2
 
 require (
 	github.com/alecthomas/kong v1.14.0
+	github.com/aviddiviner/go-murmur v0.0.0-20150519214947-b9740d71e571
 	github.com/go-kit/kit v0.13.0
 	github.com/goschtalt/goschtalt v0.27.0
 	github.com/goschtalt/properties-decoder v0.1.0
@@ -104,6 +105,7 @@ require (
 )
 
 require (
+	github.com/IBM/sarama v1.46.3 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/go-chi/chi/v5 v5.2.5
 	github.com/goschtalt/approx v1.0.0 // indirect

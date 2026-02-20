@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 
+	"xmidt-org/splitter/internal/bucket"
 	"xmidt-org/splitter/internal/log"
 	"xmidt-org/splitter/internal/metrics"
 	"xmidt-org/splitter/internal/observe"
@@ -16,6 +17,17 @@ import (
 	"github.com/twmb/franz-go/pkg/kgo"
 	"github.com/xmidt-org/wrp-go/v5"
 	"github.com/xmidt-org/wrpkafka"
+)
+
+type Outcome int
+
+const (
+	Attempted Outcome = iota
+	Queued
+	Failed
+	Accepted
+	Skipped
+	UnknownOutcome
 )
 
 var (
@@ -33,14 +45,14 @@ var (
 type MessageHandler interface {
 	// HandleMessage processes a single Kafka message.
 	// Returns nil on successful processing, or an error if processing fails.
-	HandleMessage(ctx context.Context, record *kgo.Record) (wrpkafka.Outcome, error)
+	HandleMessage(ctx context.Context, record *kgo.Record) (Outcome, error)
 }
 
 // MessageHandlerFunc is a function adapter that implements MessageHandler.
-type MessageHandlerFunc func(ctx context.Context, record *kgo.Record) (wrpkafka.Outcome, error)
+type MessageHandlerFunc func(ctx context.Context, record *kgo.Record) (Outcome, error)
 
 // HandleMessage implements the MessageHandler interface.
-func (f MessageHandlerFunc) HandleMessage(ctx context.Context, record *kgo.Record) (wrpkafka.Outcome, error) {
+func (f MessageHandlerFunc) HandleMessage(ctx context.Context, record *kgo.Record) (Outcome, error) {
 	return f(ctx, record)
 }
 
@@ -49,37 +61,34 @@ type WRPMessageHandler struct {
 	producer      publisher.Publisher
 	logEmitter    *observe.Subject[log.Event]
 	metricEmitter *observe.Subject[metrics.Event]
-}
-
-// WRPMessageHandlerConfig contains configuration for the WRP message handler.
-type WRPMessageHandlerConfig struct {
-	Producer       publisher.Publisher
-	LogEmitter     *observe.Subject[log.Event]
-	MetricsEmitter *observe.Subject[metrics.Event]
+	buckets       bucket.Bucket
 }
 
 // NewWRPMessageHandler creates a new WRP message handler with the given configuration.
-func NewWRPMessageHandler(config WRPMessageHandlerConfig) *WRPMessageHandler {
-	logEmitter := config.LogEmitter
-	if logEmitter == nil {
-		logEmitter = log.NewNoop()
+func NewWRPMessageHandler(opts ...HandlerOption) (*WRPMessageHandler, error) {
+	handler := &WRPMessageHandler{
+		logEmitter:    log.NewNoop(),
+		metricEmitter: metrics.NewNoop(),
 	}
 
-	metricEmitter := config.MetricsEmitter
-	if metricEmitter == nil {
-		metricEmitter = metrics.NewNoop()
+	// Apply all options to the handler
+	for _, opt := range opts {
+		if err := opt.apply(handler); err != nil {
+			return nil, err
+		}
 	}
 
-	return &WRPMessageHandler{
-		producer:      config.Producer,
-		logEmitter:    logEmitter,
-		metricEmitter: metricEmitter,
+	err := validateHandler(handler)
+	if err != nil {
+		return nil, fmt.Errorf("invalid handler configuration: %w", err)
 	}
+
+	return handler, nil
 }
 
 // HandleMessage processes a Kafka message containing a WRP message and routes it
 // to the appropriate topic
-func (h *WRPMessageHandler) HandleMessage(ctx context.Context, record *kgo.Record) (wrpkafka.Outcome, error) {
+func (h *WRPMessageHandler) HandleMessage(ctx context.Context, record *kgo.Record) (Outcome, error) {
 
 	// Decode WRP message
 	var msg wrp.Message
@@ -89,7 +98,7 @@ func (h *WRPMessageHandler) HandleMessage(ctx context.Context, record *kgo.Recor
 		h.emitLog(log.LevelWarn, "decode WRP message", map[string]any{
 			"error": err.Error(),
 		})
-		return wrpkafka.Failed, ErrMalformedMsg
+		return Failed, ErrMalformedMsg
 	}
 
 	// Log the message being processed
@@ -100,20 +109,29 @@ func (h *WRPMessageHandler) HandleMessage(ctx context.Context, record *kgo.Recor
 		"transaction_uuid": msg.TransactionUUID,
 	})
 
+	if !h.buckets.IsInTargetBucket(&msg) {
+		h.emitLog(log.LevelDebug, "message not in target bucket, skipping", map[string]any{
+			"source":      msg.Source,
+			"destination": msg.Destination,
+		})
+		// TODO - can't use wrpkafka for the return
+		return Skipped, nil
+	}
+
 	// Use wrpkafka publisher to route the message
 	outcome, err := h.producer.Produce(ctx, &msg)
 	if err != nil {
 		h.emitLog(log.LevelError, "failed to produce WRP message", map[string]any{
 			"error": err.Error(),
 		})
-		return outcome, fmt.Errorf("produce failed: %w", err)
+		return getOutcome(outcome), fmt.Errorf("produce failed: %w", err)
 	}
 
 	h.emitLog(log.LevelDebug, "successfully routed WRP message", map[string]any{
-		"outcome": outcome.String(),
+		"outcome": outcome,
 	})
 
-	return outcome, nil
+	return getOutcome(outcome), nil
 }
 
 // Close shuts down the message handler and its producer.
@@ -128,4 +146,20 @@ func (h *WRPMessageHandler) Close(ctx context.Context) error {
 // The emitter is never nil (defaults to no-op if not configured).
 func (h *WRPMessageHandler) emitLog(level log.Level, message string, attrs map[string]any) {
 	h.logEmitter.Notify(log.NewEvent(level, message, attrs))
+}
+
+// getOutcome converts wrpkafka.Outcome to Outcome.
+func getOutcome(o wrpkafka.Outcome) Outcome {
+	switch o {
+	case wrpkafka.Attempted:
+		return Attempted
+	case wrpkafka.Failed:
+		return Failed
+	case wrpkafka.Queued:
+		return Queued
+	case wrpkafka.Accepted:
+		return Accepted
+	default:
+		return UnknownOutcome
+	}
 }
