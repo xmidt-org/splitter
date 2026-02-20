@@ -48,6 +48,11 @@ type Buckets struct {
 }
 
 func NewBuckets(config Config) (Buckets, error) {
+	if (len(config.PossibleBuckets) == 0) {
+		// if there are no buckets, then all messages are in the target bucket
+		return Buckets{}, nil
+	}
+	
 	// sort buckets slice in order of threshold, ascending
 	sort.Slice(config.PossibleBuckets, func(i, j int) bool {
 		return config.PossibleBuckets[i].Threshold < config.PossibleBuckets[j].Threshold
@@ -93,6 +98,11 @@ func getTargetIndex(targetBucket string, buckets []Bucket) (int, error) {
 
 // determine if message hashes to the target bucket
 func (r *Buckets) IsInTargetBucket(msg *wrp.Message) bool {
+	// if there are no buckets, there is no hashing
+	if (len(r.buckets) == 0) {
+		return true
+	}
+
 	partitionKey, err := r.getPartitionKey(msg)
 	if err != nil {
 		return false

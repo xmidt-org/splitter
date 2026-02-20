@@ -11,6 +11,7 @@ import (
 	"xmidt-org/splitter/internal/bucket"
 	"xmidt-org/splitter/internal/configuration"
 	"xmidt-org/splitter/internal/consumer"
+	"xmidt-org/splitter/internal/publisher"
 
 	"github.com/goschtalt/goschtalt"
 	_ "github.com/goschtalt/goschtalt/pkg/typical"
@@ -29,11 +30,12 @@ var defaultConfigFile []byte
 
 // Config is the configuration for the wrp-kafka-splitter.
 type Config struct {
-	Logging           LogConfig
+	Logger            LogConfig
 	Tracing           candlelight.Config
 	Prometheus        touchstone.Config
 	PrometheusHandler touchhttp.Config
 	Servers           Servers
+	Producer          publisher.Config
 	Consumer          consumer.Config
 	Buckets           bucket.Config
 }

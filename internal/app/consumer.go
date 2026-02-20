@@ -4,35 +4,41 @@
 package app
 
 import (
-	"context"
 	"fmt"
 
 	"xmidt-org/splitter/internal/consumer"
 	"xmidt-org/splitter/internal/log"
 	"xmidt-org/splitter/internal/metrics"
 	"xmidt-org/splitter/internal/observe"
+	"xmidt-org/splitter/internal/publisher"
 
-	"github.com/twmb/franz-go/pkg/kgo"
 	"go.uber.org/fx"
 )
 
-// splitter  module as a potential library component - rework this.
 type ConsumerIn struct {
 	fx.In
 	Config        consumer.Config
+	Publisher     publisher.Publisher
 	LogEmitter    *observe.Subject[log.Event]
 	MetricEmitter *observe.Subject[metrics.Event]
 }
 
 type ConsumerOut struct {
 	fx.Out
-	Consumer *consumer.Consumer
+	Consumer consumer.Consumer
 }
 
 // provideConsumer creates a new Kafka consumer instance with options from the config file
 // and integrates it with the metrics and logging emitters.
 func provideConsumer(in ConsumerIn) (ConsumerOut, error) {
 	cfg := in.Config
+
+	// Create the WRP message handler with the provided publisher
+	handler := consumer.NewWRPMessageHandler(consumer.WRPMessageHandlerConfig{
+		Producer:       in.Publisher,
+		LogEmitter:     in.LogEmitter,
+		MetricsEmitter: in.MetricEmitter,
+	})
 
 	// Build options from configuration - validation is handled by the option functions
 	opts := []consumer.Option{
@@ -45,15 +51,8 @@ func provideConsumer(in ConsumerIn) (ConsumerOut, error) {
 		consumer.WithTopics(cfg.Topics...),
 		consumer.WithGroupID(cfg.GroupID),
 
-		// Message handler (placeholder - replace with actual implementation)
-		consumer.WithMessageHandler(
-			consumer.MessageHandlerFunc(func(ctx context.Context, record *kgo.Record) error {
-				// TODO: Replace with actual WRP message processing
-				fmt.Printf("Received message: topic=%s partition=%d offset=%d key=%s value=%s\n",
-					record.Topic, record.Partition, record.Offset, string(record.Key), string(record.Value))
-				return nil
-			}),
-		),
+		// Message handler
+		consumer.WithMessageHandler(consumer.MessageHandlerFunc(handler.HandleMessage)),
 
 		// Client identification
 		consumer.WithClientID(cfg.ClientID),
@@ -86,8 +85,11 @@ func provideConsumer(in ConsumerIn) (ConsumerOut, error) {
 		// Connection (Duration type, not pointer)
 		consumer.WithConnIdleTimeout(cfg.ConnIdleTimeout),
 		consumer.WithRequestTimeoutOverhead(cfg.RequestTimeoutOverhead),
-		consumer.WithDisableAutoCommit(cfg.DisableAutoCommit),
 		consumer.WithConsumeFromTheBeginning(cfg.ConsumeFromBeginning),
+
+		// Fetch State Management
+		consumer.WithResumeDelaySeconds(cfg.ResumeDelaySeconds),
+		consumer.WithConsecutiveFailuresThreshold(cfg.ConsecutiveFailureThreshold),
 	}
 
 	// Create the consumer

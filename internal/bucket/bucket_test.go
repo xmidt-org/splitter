@@ -59,7 +59,20 @@ func (s *BucketsSuite) TestNewBuckets_InvalidKeyType() {
 	assert.Error(s.T(), err)
 }
 
-func (s *BucketsSuite) TestShouldPublish_True() {
+func (s *BucketsSuite) TestNewBuckets_NoBuckets() {
+	cfg := Config{}	
+	_, err := NewBuckets(cfg)
+	assert.NoError(s.T(), err)
+}
+
+func (s *BucketsSuite) TestNoBuckets() {
+	buckets, err := NewBuckets(Config{})
+	assert.NoError(s.T(), err)
+	msg := &wrp.Message{Source: "mac:112233445566"}
+	assert.True(s.T(), buckets.IsInTargetBucket(msg))
+}
+
+func (s *BucketsSuite) TestIsInBucket_True() {
 	msg := &wrp.Message{Source: "mac:112233445566"}
 	partitionKey, _ := s.buckets.getPartitionKey(msg)
 	partitioner := NewPartitioner()
@@ -68,7 +81,7 @@ func (s *BucketsSuite) TestShouldPublish_True() {
 	assert.True(s.T(), s.buckets.IsInTargetBucket(msg))
 }
 
-func (s *BucketsSuite) TestShouldPublish_False() {
+func (s *BucketsSuite) TestIsInBucket_False() {
 	msg := &wrp.Message{Source: "mac:112233445566"}
 	partitionKey, _ := s.buckets.getPartitionKey(msg)
 	partitioner := NewPartitioner()
@@ -77,7 +90,7 @@ func (s *BucketsSuite) TestShouldPublish_False() {
 	assert.False(s.T(), s.buckets.IsInTargetBucket(msg))
 }
 
-func (s *BucketsSuite) TestShouldPublish_InvalidKey() {
+func (s *BucketsSuite) TestIsInBucket_InvalidKey() {
 	msg := &wrp.Message{Source: "invalid"}
 	assert.False(s.T(), s.buckets.IsInTargetBucket(msg))
 }

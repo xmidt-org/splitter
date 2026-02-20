@@ -28,7 +28,7 @@ type Config struct {
 	MaxConcurrentFetches   int           `yaml:"max_concurrent_fetches,omitempty"`
 	// Auto-commit
 	AutoCommitInterval time.Duration `yaml:"auto_commit_interval,omitempty"`
-	DisableAutoCommit  bool          `yaml:"disable_auto_commit,omitempty"`
+	//DisableAutoCommit  bool          `yaml:"disable_auto_commit,omitempty"`
 
 	// SASL authentication
 	SASL *SASLConfig `yaml:"sasl,omitempty"`
@@ -50,6 +50,10 @@ type Config struct {
 
 	// Offset management
 	ConsumeFromBeginning bool `yaml:"consume_from_beginning,omitempty"`
+
+	// Fetch State Management
+	ResumeDelaySeconds          int `yaml:"resume_delay_seconds,omitempty"`
+	ConsecutiveFailureThreshold int `yaml:"consecutive_failure_threshold,omitempty"`
 }
 
 // SASLConfig contains SASL authentication configuration.
