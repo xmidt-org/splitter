@@ -29,18 +29,6 @@ type HandlerTestSuite struct {
 	handler    *WRPMessageHandler
 }
 
-// MockPublisher implements publisher.Publisher for testing
-type MockPublisher struct {
-	mock.Mock
-}
-
-func (m *MockPublisher) Produce(ctx context.Context, msg *wrp.Message) (wrpkafka.Outcome, error) {
-	args := m.Called(ctx, msg)
-	return args.Get(0).(wrpkafka.Outcome), args.Error(1)
-}
-func (m *MockPublisher) Start() error                   { return nil }
-func (m *MockPublisher) Stop(ctx context.Context) error { return nil }
-
 func (suite *HandlerTestSuite) SetupTest() {
 	suite.producer = &MockPublisher{}
 	suite.buckets = &MockBuckets{}
