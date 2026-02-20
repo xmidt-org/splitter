@@ -499,7 +499,6 @@ func (s *ConsumerTestSuite) TestManageFetchState() {
 				s.mockClient.On("ResumeFetchTopics", s.consumer.config.topics).Return()
 			}
 
-			s.consumer.wg.Add(1)
 			s.consumer.manageFetchState()
 
 			// Verify pause state
