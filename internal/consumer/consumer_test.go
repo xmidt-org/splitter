@@ -201,12 +201,11 @@ func (s *ConsumerTestSuite) TestStart() {
 			} else {
 				s.NoError(err)
 				s.True(s.consumer.IsRunning())
-
-				// Clean up goroutines
-				s.consumer.cancel()
-				s.consumer.wg.Wait()
 			}
 
+			// Clean up goroutines before asserting expectations
+			s.consumer.cancel()
+			s.consumer.wg.Wait()
 			s.mockClient.AssertExpectations(s.T())
 		})
 	}
