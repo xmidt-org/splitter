@@ -19,6 +19,17 @@ import (
 	"github.com/xmidt-org/wrpkafka"
 )
 
+type Outcome int
+
+const (
+	Attempted Outcome = iota
+	Queued
+	Failed
+	Accepted
+	Skipped
+	UnknownOutcome
+)
+
 var (
 	ErrMalformedMsg = errors.New("malformed wrp message")
 )
@@ -34,14 +45,14 @@ var (
 type MessageHandler interface {
 	// HandleMessage processes a single Kafka message.
 	// Returns nil on successful processing, or an error if processing fails.
-	HandleMessage(ctx context.Context, record *kgo.Record) (wrpkafka.Outcome, error)
+	HandleMessage(ctx context.Context, record *kgo.Record) (Outcome, error)
 }
 
 // MessageHandlerFunc is a function adapter that implements MessageHandler.
-type MessageHandlerFunc func(ctx context.Context, record *kgo.Record) (wrpkafka.Outcome, error)
+type MessageHandlerFunc func(ctx context.Context, record *kgo.Record) (Outcome, error)
 
 // HandleMessage implements the MessageHandler interface.
-func (f MessageHandlerFunc) HandleMessage(ctx context.Context, record *kgo.Record) (wrpkafka.Outcome, error) {
+func (f MessageHandlerFunc) HandleMessage(ctx context.Context, record *kgo.Record) (Outcome, error) {
 	return f(ctx, record)
 }
 
@@ -77,7 +88,7 @@ func NewWRPMessageHandler(opts ...HandlerOption) (*WRPMessageHandler, error) {
 
 // HandleMessage processes a Kafka message containing a WRP message and routes it
 // to the appropriate topic
-func (h *WRPMessageHandler) HandleMessage(ctx context.Context, record *kgo.Record) (wrpkafka.Outcome, error) {
+func (h *WRPMessageHandler) HandleMessage(ctx context.Context, record *kgo.Record) (Outcome, error) {
 
 	// Decode WRP message
 	var msg wrp.Message
@@ -87,7 +98,7 @@ func (h *WRPMessageHandler) HandleMessage(ctx context.Context, record *kgo.Recor
 		h.emitLog(log.LevelWarn, "decode WRP message", map[string]any{
 			"error": err.Error(),
 		})
-		return wrpkafka.Failed, ErrMalformedMsg
+		return Failed, ErrMalformedMsg
 	}
 
 	// Log the message being processed
@@ -104,7 +115,7 @@ func (h *WRPMessageHandler) HandleMessage(ctx context.Context, record *kgo.Recor
 			"destination": msg.Destination,
 		})
 		// TODO - can't use wrpkafka for the return
-		return wrpkafka.Attempted, nil
+		return Skipped, nil
 	}
 
 	// Use wrpkafka publisher to route the message
@@ -113,14 +124,14 @@ func (h *WRPMessageHandler) HandleMessage(ctx context.Context, record *kgo.Recor
 		h.emitLog(log.LevelError, "failed to produce WRP message", map[string]any{
 			"error": err.Error(),
 		})
-		return outcome, fmt.Errorf("produce failed: %w", err)
+		return getOutcome(outcome), fmt.Errorf("produce failed: %w", err)
 	}
 
 	h.emitLog(log.LevelDebug, "successfully routed WRP message", map[string]any{
-		"outcome": outcome.String(),
+		"outcome": outcome,
 	})
 
-	return outcome, nil
+	return getOutcome(outcome), nil
 }
 
 // Close shuts down the message handler and its producer.
@@ -135,4 +146,20 @@ func (h *WRPMessageHandler) Close(ctx context.Context) error {
 // The emitter is never nil (defaults to no-op if not configured).
 func (h *WRPMessageHandler) emitLog(level log.Level, message string, attrs map[string]any) {
 	h.logEmitter.Notify(log.NewEvent(level, message, attrs))
+}
+
+// getOutcome converts wrpkafka.Outcome to Outcome.
+func getOutcome(o wrpkafka.Outcome) Outcome {
+	switch o {
+	case wrpkafka.Attempted:
+		return Attempted
+	case wrpkafka.Failed:
+		return Failed
+	case wrpkafka.Queued:
+		return Queued
+	case wrpkafka.Accepted:
+		return Accepted
+	default:
+		return UnknownOutcome
+	}
 }

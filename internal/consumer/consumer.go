@@ -261,7 +261,7 @@ func (c *KafkaConsumer) pollLoop() {
 			}
 
 			var err error
-			var outcome wrpkafka.Outcome
+			var outcome Outcome
 			if outcome, err = c.handleRecord(record); err != nil {
 				c.emitLog(log.LevelError, "message handling error", map[string]any{
 					"error":     err,
@@ -302,9 +302,9 @@ func (c *KafkaConsumer) pollLoop() {
 // But we will lose all records committed but not produced prior to the pause.
 //
 // 6.  TODO - add transaction support to wrpkafka library
-func (c *KafkaConsumer) handleOutcome(outcome wrpkafka.Outcome, err error, record *kgo.Record) {
+func (c *KafkaConsumer) handleOutcome(outcome Outcome, err error, record *kgo.Record) {
 	// if queued, attempted, accepted or a permanent error, mark for commit
-	if outcome != wrpkafka.Failed {
+	if outcome != Failed {
 		c.client.MarkCommitRecords(record)
 	} else if err != nil && !isRetryable(err) {
 		c.client.MarkCommitRecords(record)
@@ -312,7 +312,7 @@ func (c *KafkaConsumer) handleOutcome(outcome wrpkafka.Outcome, err error, recor
 
 	// Accepted means the producer synchronously received an ack from the broker
 	// TODO - consider implementing a local retry queue for high QOS
-	if outcome == wrpkafka.Accepted {
+	if outcome == Accepted {
 		c.consecutiveFailures.Store(0)
 	}
 
@@ -401,7 +401,7 @@ func (c *KafkaConsumer) resumeFetchTopics() {
 // handleRecord processes a single record using the configured handler.
 // not that if the buffer is full, franz-go will block on produce until the delivery timeout,
 // , so this call should be synchonous and also block to avoid consuming more messages
-func (c *KafkaConsumer) handleRecord(record *kgo.Record) (wrpkafka.Outcome, error) {
+func (c *KafkaConsumer) handleRecord(record *kgo.Record) (Outcome, error) {
 	// Create a context for this message
 	// In a real implementation, this would include tracing context
 	ctx := context.Background()

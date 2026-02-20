@@ -41,13 +41,13 @@ prometheus_handler:
 
 buckets:
 #   List of all bucket names (e.g. "bucket-0", "bucket-1", "bucket-2")
-  possible_buckets:
-    - name: "bucket-0"
-      threshold: 0.5
+  possible_buckets:  # goshtalt is currently always appending rather than replacing, we can't have default buckets right now
+    # - name: "bucket-0"
+    #   threshold: 0.5
 
   # Required: Target bucket name to route messages to
-  target_bucket: "bucket-0"
-  partition_key_type: "device_id"
+  # target_bucket: "bucket-0"
+  # partition_key_type: "device_id"
 
 producer:
   brokers:

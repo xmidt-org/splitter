@@ -18,7 +18,6 @@ import (
 	kit "github.com/go-kit/kit/metrics"
 	"github.com/stretchr/testify/suite"
 	"github.com/twmb/franz-go/pkg/kgo"
-	"github.com/xmidt-org/wrpkafka"
 )
 
 type OptionsTestSuite struct {
@@ -36,8 +35,8 @@ func (s *OptionsTestSuite) createTestConsumer(opts ...Option) (*KafkaConsumer, e
 		WithBrokers("localhost:9092"),
 		WithTopics("test-topic"),
 		WithGroupID("test-group"),
-		WithMessageHandler(MessageHandlerFunc(func(ctx context.Context, record *kgo.Record) (wrpkafka.Outcome, error) {
-			return wrpkafka.Attempted, nil
+		WithMessageHandler(MessageHandlerFunc(func(ctx context.Context, record *kgo.Record) (Outcome, error) {
+			return Attempted, nil
 		})),
 	}
 
@@ -84,8 +83,8 @@ func (s *OptionsTestSuite) TestWithBrokers_Multiple() {
 		WithBrokers("broker1:9092", "broker2:9092", "broker3:9092"),
 		WithTopics("test-topic"),
 		WithGroupID("test-group"),
-		WithMessageHandler(MessageHandlerFunc(func(ctx context.Context, record *kgo.Record) (wrpkafka.Outcome, error) {
-			return wrpkafka.Attempted, nil
+		WithMessageHandler(MessageHandlerFunc(func(ctx context.Context, record *kgo.Record) (Outcome, error) {
+			return Attempted, nil
 		})),
 	)
 	s.NoError(err)
@@ -104,8 +103,8 @@ func (s *OptionsTestSuite) TestWithTopics_Multiple() {
 		WithBrokers("localhost:9092"),
 		WithTopics("topic1", "topic2", "topic3"),
 		WithGroupID("test-group"),
-		WithMessageHandler(MessageHandlerFunc(func(ctx context.Context, record *kgo.Record) (wrpkafka.Outcome, error) {
-			return wrpkafka.Attempted, nil
+		WithMessageHandler(MessageHandlerFunc(func(ctx context.Context, record *kgo.Record) (Outcome, error) {
+			return Attempted, nil
 		})),
 	)
 	s.NoError(err)
@@ -120,9 +119,9 @@ func (s *OptionsTestSuite) TestWithGroupID() {
 
 func (s *OptionsTestSuite) TestWithMessageHandler() {
 	called := false
-	handler := MessageHandlerFunc(func(ctx context.Context, record *kgo.Record) (wrpkafka.Outcome, error) {
+	handler := MessageHandlerFunc(func(ctx context.Context, record *kgo.Record) (Outcome, error) {
 		called = true
-		return wrpkafka.Attempted, nil
+		return Attempted, nil
 	})
 
 	consumer, err := s.newKafkaConsumerForTest(
@@ -135,11 +134,11 @@ func (s *OptionsTestSuite) TestWithMessageHandler() {
 	s.NotNil(consumer.config.handler)
 
 	// Test that the handler works
-	var outcome wrpkafka.Outcome
+	var outcome Outcome
 	outcome, err = consumer.config.handler.HandleMessage(context.Background(), &kgo.Record{})
 	s.NoError(err)
 	s.True(called)
-	s.Equal(wrpkafka.Attempted, outcome)
+	s.Equal(Attempted, outcome)
 }
 
 func (s *OptionsTestSuite) TestWithMessageHandler_Nil() {
@@ -773,8 +772,8 @@ func (s *OptionsTestSuite) TestValidate_MissingBrokers() {
 	cfg := &consumerConfig{
 		topics:  []string{"topic"},
 		groupID: "group",
-		handler: MessageHandlerFunc(func(ctx context.Context, record *kgo.Record) (wrpkafka.Outcome, error) {
-			return wrpkafka.Attempted, nil
+		handler: MessageHandlerFunc(func(ctx context.Context, record *kgo.Record) (Outcome, error) {
+			return Attempted, nil
 		}),
 	}
 
@@ -787,8 +786,8 @@ func (s *OptionsTestSuite) TestValidate_MissingTopics() {
 	cfg := &consumerConfig{
 		brokers: []string{"localhost:9092"},
 		groupID: "group",
-		handler: MessageHandlerFunc(func(ctx context.Context, record *kgo.Record) (wrpkafka.Outcome, error) {
-			return wrpkafka.Attempted, nil
+		handler: MessageHandlerFunc(func(ctx context.Context, record *kgo.Record) (Outcome, error) {
+			return Attempted, nil
 		}),
 	}
 
@@ -801,8 +800,8 @@ func (s *OptionsTestSuite) TestValidate_MissingGroupID() {
 	cfg := &consumerConfig{
 		brokers: []string{"localhost:9092"},
 		topics:  []string{"topic"},
-		handler: MessageHandlerFunc(func(ctx context.Context, record *kgo.Record) (wrpkafka.Outcome, error) {
-			return wrpkafka.Attempted, nil
+		handler: MessageHandlerFunc(func(ctx context.Context, record *kgo.Record) (Outcome, error) {
+			return Attempted, nil
 		}),
 	}
 
@@ -828,8 +827,8 @@ func (s *OptionsTestSuite) TestValidate_Success() {
 		brokers: []string{"localhost:9092"},
 		topics:  []string{"topic"},
 		groupID: "group",
-		handler: MessageHandlerFunc(func(ctx context.Context, record *kgo.Record) (wrpkafka.Outcome, error) {
-			return wrpkafka.Attempted, nil
+		handler: MessageHandlerFunc(func(ctx context.Context, record *kgo.Record) (Outcome, error) {
+			return Attempted, nil
 		}),
 	}
 
