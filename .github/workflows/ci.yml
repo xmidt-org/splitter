@@ -20,7 +20,7 @@ on:
 
 jobs:
   ci:
-    uses: xmidt-org/shared-go/.github/workflows/ci.yml@b596ecad2dd8eb51e5105110d2bef1403dafb28b # v4.9.16
+    uses: xmidt-org/shared-go/.github/workflows/ci.yml@dee1c5455178c36d21fb20702b0057c75ce1fdc9 # v4.9.17
     with:
       release-project-name: splitter
       release-type:         program
