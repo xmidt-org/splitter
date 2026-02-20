@@ -206,6 +206,7 @@ func (s *ConsumerTestSuite) TestStart() {
 			// Clean up goroutines before asserting expectations
 			s.consumer.cancel()
 			s.consumer.wg.Wait()
+
 			s.mockClient.AssertExpectations(s.T())
 		})
 	}
@@ -261,6 +262,9 @@ func (s *ConsumerTestSuite) TestStop() {
 				s.NoError(err)
 				s.False(s.consumer.IsRunning())
 			}
+
+			s.consumer.cancel()
+			s.consumer.wg.Wait()
 
 			s.mockClient.AssertExpectations(s.T())
 		})
@@ -370,6 +374,9 @@ func (s *ConsumerTestSuite) TestHandleOutcome() {
 			} else if tt.expectHigherFailureCount {
 				s.Greater(failuresAfter, failuresBefore, "consecutive failures should be incremented")
 			}
+
+			s.consumer.cancel()
+			s.consumer.wg.Wait()
 
 			s.mockClient.AssertExpectations(s.T())
 		})
@@ -545,6 +552,9 @@ func (s *ConsumerTestSuite) TestPauseFetchTopics() {
 				s.Greater(s.consumer.unPauseAt.Load(), int64(0))
 			}
 
+			s.consumer.cancel()
+			s.consumer.wg.Wait()
+
 			s.mockClient.AssertExpectations(s.T())
 		})
 	}
@@ -717,6 +727,10 @@ func (s *ConsumerTestSuite) TestPollLoop() {
 			case <-time.After(1 * time.Second):
 				s.Fail("pollLoop did not exit in time")
 			}
+
+			s.consumer.cancel()
+			s.consumer.wg.Wait()
+
 			s.mockClient.AssertExpectations(s.T())
 			mf.AssertExpectations(s.T())
 			mh.AssertExpectations(s.T())
