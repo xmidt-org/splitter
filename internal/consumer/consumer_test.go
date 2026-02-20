@@ -61,8 +61,6 @@ func (s *ConsumerTestSuite) TearDownTest() {
 
 // TestNew tests consumer creation with various option combinations
 func (s *ConsumerTestSuite) TestNew() {
-	s.T().Parallel()
-
 	tests := []struct {
 		name        string
 		opts        []Option
@@ -148,8 +146,6 @@ func (s *ConsumerTestSuite) TestNew() {
 
 // TestStart tests consumer startup scenarios
 func (s *ConsumerTestSuite) TestStart() {
-	s.T().Parallel()
-
 	tests := []struct {
 		name        string
 		setupMock   func(*MockClient)
@@ -218,8 +214,6 @@ func (s *ConsumerTestSuite) TestStart() {
 
 // TestStop tests consumer shutdown scenarios
 func (s *ConsumerTestSuite) TestStop() {
-	s.T().Parallel()
-
 	tests := []struct {
 		name        string
 		setupMock   func(*MockClient)
@@ -279,8 +273,6 @@ func (s *ConsumerTestSuite) TestStop() {
 
 // TestHandleOutcome tests offset commit logic based on different outcomes
 func (s *ConsumerTestSuite) TestHandleOutcome() {
-	s.T().Parallel()
-
 	record := &kgo.Record{
 		Topic:     "test-topic",
 		Partition: 0,
@@ -393,8 +385,6 @@ func (s *ConsumerTestSuite) TestHandleOutcome() {
 
 // TestIsRetryable tests retry error classification
 func (s *ConsumerTestSuite) TestIsRetryable() {
-	s.T().Parallel()
-
 	tests := []struct {
 		name     string
 		err      error
@@ -437,8 +427,6 @@ func (s *ConsumerTestSuite) TestIsRetryable() {
 
 // TestManageFetchState tests pause/resume state management
 func (s *ConsumerTestSuite) TestManageFetchState() {
-	s.T().Parallel()
-
 	tests := []struct {
 		name                        string
 		isPaused                    bool
@@ -528,8 +516,6 @@ func (s *ConsumerTestSuite) TestManageFetchState() {
 
 // TestPauseFetchTopics tests the pause functionality
 func (s *ConsumerTestSuite) TestPauseFetchTopics() {
-	s.T().Parallel()
-
 	tests := []struct {
 		name          string
 		initialPaused bool
@@ -575,8 +561,6 @@ func (s *ConsumerTestSuite) TestPauseFetchTopics() {
 
 // TestResumeFetchTopics tests the resume functionality
 func (s *ConsumerTestSuite) TestResumeFetchTopics() {
-	s.T().Parallel()
-
 	s.Run("resume topics", func() {
 		s.mockClient = &MockClient{}
 		s.consumer.client = s.mockClient
@@ -593,8 +577,6 @@ func (s *ConsumerTestSuite) TestResumeFetchTopics() {
 
 // TestHandlePublishEvent tests publish event handling
 func (s *ConsumerTestSuite) TestHandlePublishEvent() {
-	s.T().Parallel()
-
 	tests := []struct {
 		name                     string
 		event                    *wrpkafka.PublishEvent
@@ -651,8 +633,6 @@ func (s *ConsumerTestSuite) TestHandlePublishEvent() {
 
 // TestIsRunning tests the running state check
 func (s *ConsumerTestSuite) TestIsRunning() {
-	s.T().Parallel()
-
 	tests := []struct {
 		name     string
 		running  bool
@@ -681,8 +661,6 @@ func (s *ConsumerTestSuite) TestIsRunning() {
 
 // TestPollLoop covers context done, no errors, and fetch error cases
 func (s *ConsumerTestSuite) TestPollLoop() {
-	s.T().Parallel()
-
 	tests := []struct {
 		name    string
 		setup   func(*MockClient, *MockFetches, *MockHandler)
