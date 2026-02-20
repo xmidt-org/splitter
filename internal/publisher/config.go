@@ -13,30 +13,30 @@ import (
 // It can be unmarshaled via goschtalt and converted to functional options.
 type Config struct {
 	// Required fields
-	Brokers []string `yaml:"brokers"`
+	Brokers []string
 
 	// Topic routes for WRP message routing
-	TopicRoutes []TopicRoute `yaml:"topic_routes"`
+	TopicRoutes []TopicRoute
 
 	// Connection and retry settings
-	RequestTimeout         time.Duration `yaml:"request_timeout,omitempty"`
-	CleanupTimeout         time.Duration `yaml:"cleanup_timeout,omitempty"`
-	RequestRetries         int           `yaml:"request_retries,omitempty"`
-	MaxBufferedRecords     int           `yaml:"max_buffered_records,omitempty"`
-	MaxBufferedBytes       int           `yaml:"max_buffered_bytes,omitempty"`
-	AllowAutoTopicCreation bool          `yaml:"allow_auto_topic_creation,omitempty"`
+	RequestTimeout         time.Duration
+	CleanupTimeout         time.Duration
+	RequestRetries         int
+	MaxBufferedRecords     int
+	MaxBufferedBytes       int
+	AllowAutoTopicCreation bool
 
 	// SASL authentication
-	SASL *SASLConfig `yaml:"sasl,omitempty"`
+	SASL *SASLConfig
 
 	// TLS configuration
-	TLS *TLSConfig `yaml:"tls,omitempty"`
+	TLS *TLSConfig
 }
 
 // TopicRoute represents a WRP message routing configuration
 type TopicRoute struct {
-	Topic   string `yaml:"topic"`
-	Pattern string `yaml:"pattern"`
+	Topic   string
+	Pattern string
 }
 
 // ToWRPKafkaRoute converts a TopicRoute to a wrpkafka.TopicRoute

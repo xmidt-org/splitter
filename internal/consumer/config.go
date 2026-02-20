@@ -11,65 +11,63 @@ import (
 // It can be unmarshaled via goschtalt and converted to functional options.
 type Config struct {
 	// Required fields
-	Brokers []string `yaml:"brokers"`
-	Topics  []string `yaml:"topics"`
-	GroupID string   `yaml:"group_id"`
+	Brokers []string
+	Topics  []string
+	GroupID string
 
 	// Session and heartbeat
-	SessionTimeout    time.Duration `yaml:"session_timeout,omitempty"`
-	HeartbeatInterval time.Duration `yaml:"heartbeat_interval,omitempty"`
-	RebalanceTimeout  time.Duration `yaml:"rebalance_timeout,omitempty"`
+	SessionTimeout    time.Duration
+	HeartbeatInterval time.Duration
+	RebalanceTimeout  time.Duration
 
 	// Fetch configuration
-	FetchMinBytes          int32         `yaml:"fetch_min_bytes,omitempty"`
-	FetchMaxBytes          int32         `yaml:"fetch_max_bytes,omitempty"`
-	FetchMaxWait           time.Duration `yaml:"fetch_max_wait,omitempty"`
-	FetchMaxPartitionBytes int32         `yaml:"fetch_max_partition_bytes,omitempty"`
-	MaxConcurrentFetches   int           `yaml:"max_concurrent_fetches,omitempty"`
+	FetchMinBytes          int32
+	FetchMaxBytes          int32
+	FetchMaxWait           time.Duration
+	FetchMaxPartitionBytes int32
+	MaxConcurrentFetches   int
 	// Auto-commit
-	AutoCommitInterval time.Duration `yaml:"auto_commit_interval,omitempty"`
+	AutoCommitInterval time.Duration
 	//DisableAutoCommit  bool          `yaml:"disable_auto_commit,omitempty"`
 
 	// SASL authentication
-	SASL *SASLConfig `yaml:"sasl,omitempty"`
+	SASL *SASLConfig
 
 	// TLS configuration
-	TLS *TLSConfig `yaml:"tls,omitempty"`
+	TLS *TLSConfig
 
 	// Retry and backoff
-	RequestRetries int `yaml:"request_retries,omitempty"`
+	RequestRetries int
 
 	// Connection
-	ConnIdleTimeout        time.Duration `yaml:"conn_idle_timeout,omitempty"`
-	RequestTimeoutOverhead time.Duration `yaml:"request_timeout_overhead,omitempty"`
-
+	ConnIdleTimeout        time.Duration
+	RequestTimeoutOverhead time.Duration
 	// Client identification
-	ClientID   string `yaml:"client_id,omitempty"`
-	Rack       string `yaml:"rack,omitempty"`
-	InstanceID string `yaml:"instance_id,omitempty"`
-
+	ClientID   string
+	Rack       string
+	InstanceID string
 	// Offset management
-	ConsumeFromBeginning bool `yaml:"consume_from_beginning,omitempty"`
+	ConsumeFromBeginning bool
 
 	// Fetch State Management
-	ResumeDelaySeconds          int `yaml:"resume_delay_seconds,omitempty"`
-	ConsecutiveFailureThreshold int `yaml:"consecutive_failure_threshold,omitempty"`
+	ResumeDelaySeconds          int
+	ConsecutiveFailureThreshold int
 }
 
 // SASLConfig contains SASL authentication configuration.
 type SASLConfig struct {
-	Mechanism string `yaml:"mechanism"` // PLAIN, SCRAM-SHA-256, SCRAM-SHA-512
-	Username  string `yaml:"username"`
-	Password  string `yaml:"password"`
+	Mechanism string
+	Username  string
+	Password  string
 }
 
 // TLSConfig contains TLS encryption configuration.
 type TLSConfig struct {
-	Enabled            bool   `yaml:"enabled"`
-	CAFile             string `yaml:"ca_file,omitempty"`
-	CertFile           string `yaml:"cert_file,omitempty"`
-	KeyFile            string `yaml:"key_file,omitempty"`
-	InsecureSkipVerify bool   `yaml:"insecure_skip_verify,omitempty"`
+	Enabled            bool
+	CAFile             string
+	CertFile           string
+	KeyFile            string
+	InsecureSkipVerify bool
 }
 
 // Duration is a wrapper around time.Duration that supports YAML unmarshaling.
