@@ -61,7 +61,8 @@ func (c Config) ToWRPKafkaRoutes() []wrpkafka.TopicRoute {
 type SASLConfig struct {
 	Mechanism string `yaml:"mechanism"`
 	Username  string `yaml:"username"`
-	Password  string `yaml:"password"`
+	// #nosec G117
+	Password string `yaml:"password"`
 }
 
 // TLSConfig represents TLS configuration

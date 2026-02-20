@@ -58,7 +58,8 @@ type Config struct {
 type SASLConfig struct {
 	Mechanism string
 	Username  string
-	Password  string
+	// #nosec G117 -- field required for configuration, not logged or exposed
+	Password string
 }
 
 // TLSConfig contains TLS encryption configuration.
