@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/xmidt-org/wrp-go/v3"
+	"github.com/xmidt-org/wrp-go/v5"
 )
 
 // TODO - make the hash algorithm configurable, but not yet a requirement
@@ -26,15 +26,19 @@ const (
 	DeviceIdKeyName = "device_id"
 )
 
+type Bucket interface {
+	IsInTargetBucket(msg *wrp.Message) bool
+}
+
 type Config struct {
 	TargetBucket    string
-	PossibleBuckets []Bucket
+	PossibleBuckets []BucketConfig
 
 	// partition key type determines which field of the message is used for hashing to a bucket
 	PartitionKeyType string
 }
 
-type Bucket struct {
+type BucketConfig struct {
 	Name      string
 	Threshold float32
 }
@@ -43,16 +47,16 @@ type Buckets struct {
 	targetBucketIndex int
 	partitioner       Partitioner
 	partitionKeyType  KeyType
-	buckets           []Bucket
+	buckets           []BucketConfig
 	thresholds        []float32
 }
 
-func NewBuckets(config Config) (Buckets, error) {
-	if (len(config.PossibleBuckets) == 0) {
+func NewBuckets(config Config) (Bucket, error) {
+	if len(config.PossibleBuckets) == 0 {
 		// if there are no buckets, then all messages are in the target bucket
-		return Buckets{}, nil
+		return &Buckets{}, nil
 	}
-	
+
 	// sort buckets slice in order of threshold, ascending
 	sort.Slice(config.PossibleBuckets, func(i, j int) bool {
 		return config.PossibleBuckets[i].Threshold < config.PossibleBuckets[j].Threshold
@@ -70,16 +74,16 @@ func NewBuckets(config Config) (Buckets, error) {
 	// set the index for the target bucket
 	targetBucketIndex, err := getTargetIndex(config.TargetBucket, config.PossibleBuckets)
 	if err != nil {
-		return Buckets{}, err
+		return &Buckets{}, err
 	}
 
 	// set the bucket key type
 	partitionKeyType, err := getPartitionKeyType(config.PartitionKeyType)
 	if err != nil {
-		return Buckets{}, err
+		return &Buckets{}, err
 	}
 
-	return Buckets{
+	return &Buckets{
 		partitioner:       partition,
 		targetBucketIndex: targetBucketIndex,
 		buckets:           config.PossibleBuckets,
@@ -87,7 +91,7 @@ func NewBuckets(config Config) (Buckets, error) {
 		partitionKeyType:  partitionKeyType}, nil
 }
 
-func getTargetIndex(targetBucket string, buckets []Bucket) (int, error) {
+func getTargetIndex(targetBucket string, buckets []BucketConfig) (int, error) {
 	for i, bucket := range buckets {
 		if bucket.Name == targetBucket {
 			return i, nil
@@ -99,7 +103,7 @@ func getTargetIndex(targetBucket string, buckets []Bucket) (int, error) {
 // determine if message hashes to the target bucket
 func (r *Buckets) IsInTargetBucket(msg *wrp.Message) bool {
 	// if there are no buckets, there is no hashing
-	if (len(r.buckets) == 0) {
+	if len(r.buckets) == 0 {
 		return true
 	}
 

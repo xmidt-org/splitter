@@ -7,6 +7,7 @@ import (
 	"context"
 	"log/slog"
 	"time"
+	"xmidt-org/splitter/internal/bucket"
 	"xmidt-org/splitter/internal/consumer"
 	"xmidt-org/splitter/internal/publisher"
 
@@ -82,8 +83,12 @@ func CoreModule() fx.Option {
 			goschtalt.UnmarshalFunc[publisher.Config]("producer"),
 		),
 		fx.Provide(
+			goschtalt.UnmarshalFunc[bucket.Config]("buckets"),
+		),
+		fx.Provide(
 			providePublisher,
 			provideConsumer,
+			provideBuckets,
 		),
 
 		// Register consumer lifecycle hooks (start/stop)

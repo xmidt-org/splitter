@@ -39,14 +39,15 @@ prometheus_handler:
   max_requests_in_flight: 5
   timeout: 5s
 
-# buckets:
-#   # Required: List of all bucket names (e.g. "bucket-0", "bucket-1", "bucket-2")
-#   possible_buckets:
-#     - name: "bucket-0"
-#       threshold: 1.0
+buckets:
+#   List of all bucket names (e.g. "bucket-0", "bucket-1", "bucket-2")
+  possible_buckets:
+    - name: "bucket-0"
+      threshold: 0.5
 
-#   # Required: Target bucket name to route messages to
-#   target_bucket: "bucket-0"
+  # Required: Target bucket name to route messages to
+  target_bucket: "bucket-0"
+  partition_key_type: "device_id"
 
 producer:
   brokers:

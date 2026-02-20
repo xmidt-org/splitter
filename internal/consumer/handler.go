@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 
+	"xmidt-org/splitter/internal/bucket"
 	"xmidt-org/splitter/internal/log"
 	"xmidt-org/splitter/internal/metrics"
 	"xmidt-org/splitter/internal/observe"
@@ -49,32 +50,29 @@ type WRPMessageHandler struct {
 	producer      publisher.Publisher
 	logEmitter    *observe.Subject[log.Event]
 	metricEmitter *observe.Subject[metrics.Event]
-}
-
-// WRPMessageHandlerConfig contains configuration for the WRP message handler.
-type WRPMessageHandlerConfig struct {
-	Producer       publisher.Publisher
-	LogEmitter     *observe.Subject[log.Event]
-	MetricsEmitter *observe.Subject[metrics.Event]
+	buckets       bucket.Bucket
 }
 
 // NewWRPMessageHandler creates a new WRP message handler with the given configuration.
-func NewWRPMessageHandler(config WRPMessageHandlerConfig) *WRPMessageHandler {
-	logEmitter := config.LogEmitter
-	if logEmitter == nil {
-		logEmitter = log.NewNoop()
+func NewWRPMessageHandler(opts ...HandlerOption) (*WRPMessageHandler, error) {
+	handler := &WRPMessageHandler{
+		logEmitter:    log.NewNoop(),
+		metricEmitter: metrics.NewNoop(),
 	}
 
-	metricEmitter := config.MetricsEmitter
-	if metricEmitter == nil {
-		metricEmitter = metrics.NewNoop()
+	// Apply all options to the handler
+	for _, opt := range opts {
+		if err := opt.apply(handler); err != nil {
+			return nil, err
+		}
 	}
 
-	return &WRPMessageHandler{
-		producer:      config.Producer,
-		logEmitter:    logEmitter,
-		metricEmitter: metricEmitter,
+	err := validateHandler(handler)
+	if err != nil {
+		return nil, fmt.Errorf("invalid handler configuration: %w", err)
 	}
+
+	return handler, nil
 }
 
 // HandleMessage processes a Kafka message containing a WRP message and routes it
@@ -99,6 +97,15 @@ func (h *WRPMessageHandler) HandleMessage(ctx context.Context, record *kgo.Recor
 		"destination":      msg.Destination,
 		"transaction_uuid": msg.TransactionUUID,
 	})
+
+	if !h.buckets.IsInTargetBucket(&msg) {
+		h.emitLog(log.LevelDebug, "message not in target bucket, skipping", map[string]any{
+			"source":      msg.Source,
+			"destination": msg.Destination,
+		})
+		// TODO - can't use wrpkafka for the return
+		return wrpkafka.Attempted, nil
+	}
 
 	// Use wrpkafka publisher to route the message
 	outcome, err := h.producer.Produce(ctx, &msg)

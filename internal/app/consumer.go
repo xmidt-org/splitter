@@ -6,6 +6,7 @@ package app
 import (
 	"fmt"
 
+	"xmidt-org/splitter/internal/bucket"
 	"xmidt-org/splitter/internal/consumer"
 	"xmidt-org/splitter/internal/log"
 	"xmidt-org/splitter/internal/metrics"
@@ -21,6 +22,7 @@ type ConsumerIn struct {
 	Publisher     publisher.Publisher
 	LogEmitter    *observe.Subject[log.Event]
 	MetricEmitter *observe.Subject[metrics.Event]
+	Buckets       bucket.Bucket
 }
 
 type ConsumerOut struct {
@@ -33,12 +35,18 @@ type ConsumerOut struct {
 func provideConsumer(in ConsumerIn) (ConsumerOut, error) {
 	cfg := in.Config
 
+	handlerOpts := []consumer.HandlerOption{
+		// Observability
+		consumer.WithHandlerLogEmitter(in.LogEmitter),
+		consumer.WithHandlerMetricsEmitter(in.MetricEmitter),
+		consumer.WithBuckets(in.Buckets),
+		consumer.WithHandlerProducer(in.Publisher),
+	}
 	// Create the WRP message handler with the provided publisher
-	handler := consumer.NewWRPMessageHandler(consumer.WRPMessageHandlerConfig{
-		Producer:       in.Publisher,
-		LogEmitter:     in.LogEmitter,
-		MetricsEmitter: in.MetricEmitter,
-	})
+	handler, err := consumer.NewWRPMessageHandler(handlerOpts...)
+	if err != nil {
+		return ConsumerOut{}, fmt.Errorf("failed to create WRP message handler: %w", err)
+	}
 
 	// Build options from configuration - validation is handled by the option functions
 	opts := []consumer.Option{

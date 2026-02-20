@@ -11,9 +11,11 @@ import (
 	"testing"
 	"time"
 
+	"xmidt-org/splitter/internal/bucket"
 	"xmidt-org/splitter/internal/log"
 	"xmidt-org/splitter/internal/metrics"
 	"xmidt-org/splitter/internal/observe"
+	"xmidt-org/splitter/internal/publisher"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -52,6 +54,7 @@ type WRPMessageHandlerTestSuite struct {
 	logEvents     []log.Event
 	metricEvents  []metrics.Event
 	eventMutex    sync.Mutex // Protects event slices
+	buckets       bucket.Bucket
 }
 
 func (suite *WRPMessageHandlerTestSuite) SetupTest() {
@@ -61,8 +64,8 @@ func (suite *WRPMessageHandlerTestSuite) SetupTest() {
 	suite.metricEvents = make([]metrics.Event, 0)
 	suite.eventMutex.Unlock()
 
-	suite.logEmitter = observe.NewSubject[log.Event]()
-	suite.metricEmitter = observe.NewSubject[metrics.Event]()
+	suite.logEmitter = log.NewNoop()
+	suite.metricEmitter = metrics.NewNoop()
 
 	// Add observers to capture events with proper synchronization
 	suite.logEmitter.Attach(func(event log.Event) {
@@ -77,11 +80,18 @@ func (suite *WRPMessageHandlerTestSuite) SetupTest() {
 		suite.metricEvents = append(suite.metricEvents, event)
 	})
 
+	var err error
+	suite.buckets, err = bucket.NewBuckets(bucket.Config{})
+	if err != nil {
+		suite.T().Fatalf("failed to create buckets: %v", err)
+	}
+
 	// Create handler with nil producer (tests will use mock through interface)
 	suite.handler = &WRPMessageHandler{
 		producer:      nil, // Will be mocked through the WRPProducer interface
 		logEmitter:    suite.logEmitter,
 		metricEmitter: suite.metricEmitter,
+		buckets:       suite.buckets,
 	}
 }
 
@@ -95,26 +105,11 @@ func (suite *WRPMessageHandlerTestSuite) getLogEvents() []log.Event {
 	return events
 }
 
-// func (suite *WRPMessageHandlerTestSuite) getMetricEvents() []metrics.Event {
-// 	suite.eventMutex.Lock()
-// 	defer suite.eventMutex.Unlock()
-// 	// Return a copy to avoid race conditions
-// 	events := make([]metrics.Event, len(suite.metricEvents))
-// 	copy(events, suite.metricEvents)
-// 	return events
-// }
-
 func (suite *WRPMessageHandlerTestSuite) clearLogEvents() {
 	suite.eventMutex.Lock()
 	defer suite.eventMutex.Unlock()
 	suite.logEvents = suite.logEvents[:0]
 }
-
-// func (suite *WRPMessageHandlerTestSuite) clearMetricEvents() {
-// 	suite.eventMutex.Lock()
-// 	defer suite.eventMutex.Unlock()
-// 	suite.metricEvents = suite.metricEvents[:0]
-// }
 
 func (suite *WRPMessageHandlerTestSuite) clearAllEvents() {
 	suite.eventMutex.Lock()
@@ -122,18 +117,6 @@ func (suite *WRPMessageHandlerTestSuite) clearAllEvents() {
 	suite.logEvents = suite.logEvents[:0]
 	suite.metricEvents = suite.metricEvents[:0]
 }
-
-// func (suite *WRPMessageHandlerTestSuite) getLogEventCount() int {
-// 	suite.eventMutex.Lock()
-// 	defer suite.eventMutex.Unlock()
-// 	return len(suite.logEvents)
-// }
-
-// func (suite *WRPMessageHandlerTestSuite) getMetricEventCount() int {
-// 	suite.eventMutex.Lock()
-// 	defer suite.eventMutex.Unlock()
-// 	return len(suite.metricEvents)
-// }
 
 // Helper function to create MessagePack encoded WRP messages
 func createMessagePackWRPMessage(msg *wrp.Message) ([]byte, error) {
@@ -158,50 +141,57 @@ func createKafkaRecord(topic string, key []byte, value []byte) *kgo.Record {
 func (suite *WRPMessageHandlerTestSuite) TestNewWRPMessageHandler() {
 	tests := []struct {
 		name           string
-		config         WRPMessageHandlerConfig
+		producer       publisher.Publisher
+		logger         *observe.Subject[log.Event]
 		expectDefaults bool
+		expectError    bool
 		description    string
 	}{
 		{
-			name: "with_all_config",
-			config: WRPMessageHandlerConfig{
-				Producer:   &MockWRPProducer{},
-				LogEmitter: suite.logEmitter,
-			},
+			name:           "with_all_config",
+			producer:       &MockWRPProducer{},
+			logger:         suite.logEmitter,
 			expectDefaults: false,
+			expectError:    false,
 			description:    "Should use provided producer and log emitter",
 		},
 		{
-			name: "with_nil_log_emitter",
-			config: WRPMessageHandlerConfig{
-				Producer:   &MockWRPProducer{},
-				LogEmitter: nil,
-			},
+			name:           "with_nil_log_emitter",
+			producer:       &MockWRPProducer{},
+			logger:         nil,
 			expectDefaults: true,
+			expectError:    true,
 			description:    "Should use default log emitter when nil provided",
 		},
 		{
-			name: "with_empty_config",
-			config: WRPMessageHandlerConfig{
-				Producer:   nil,
-				LogEmitter: nil,
-			},
+			name:           "with_empty_config",
+			producer:       nil,
+			logger:         nil,
 			expectDefaults: true,
+			expectError:    true,
 			description:    "Should handle empty config gracefully",
 		},
 	}
 
 	for _, tt := range tests {
 		suite.Run(tt.name, func() {
-			handler := NewWRPMessageHandler(tt.config)
-
+			opts := []HandlerOption{
+				WithHandlerProducer(tt.producer),
+				WithHandlerLogEmitter(tt.logger),
+			}
+			handler, err := NewWRPMessageHandler(opts...)
+			if tt.expectError {
+				suite.Error(err, tt.description)
+				suite.Nil(handler, tt.description)
+				return
+			}
+			suite.NoError(err, tt.description)
 			suite.NotNil(handler, tt.description)
-			suite.Equal(tt.config.Producer, handler.producer)
-
+			suite.Equal(tt.producer, handler.producer)
 			if tt.expectDefaults {
 				suite.NotNil(handler.logEmitter, "Should have default log emitter")
 			} else {
-				suite.Equal(tt.config.LogEmitter, handler.logEmitter)
+				suite.Equal(tt.logger, handler.logEmitter)
 			}
 		})
 	}
@@ -312,6 +302,7 @@ func (suite *WRPMessageHandlerTestSuite) TestHandleMessage() {
 				WRPMessageHandler: &WRPMessageHandler{
 					producer:   nil,
 					logEmitter: suite.logEmitter,
+					buckets:    suite.buckets,
 				},
 				mockProducer: mockProducer,
 			}
@@ -514,6 +505,7 @@ func (suite *WRPMessageHandlerTestSuite) TestClose() {
 					producer:      suite.mockPublisher,
 					logEmitter:    suite.logEmitter,
 					metricEmitter: suite.metricEmitter,
+					buckets:       suite.buckets,
 				}
 			},
 			setupMock: func(mockPub *MockWRPProducer) {
@@ -529,6 +521,7 @@ func (suite *WRPMessageHandlerTestSuite) TestClose() {
 					producer:      suite.mockPublisher,
 					logEmitter:    suite.logEmitter,
 					metricEmitter: suite.metricEmitter,
+					buckets:       suite.buckets,
 				}
 			},
 			setupMock: func(mockPub *MockWRPProducer) {
@@ -544,6 +537,7 @@ func (suite *WRPMessageHandlerTestSuite) TestClose() {
 					producer:      nil,
 					logEmitter:    suite.logEmitter,
 					metricEmitter: suite.metricEmitter,
+					buckets:       suite.buckets,
 				}
 			},
 			setupMock: func(mockPub *MockWRPProducer) {
@@ -699,6 +693,7 @@ func (suite *WRPMessageHandlerTestSuite) TestHandleMessageTypes() {
 				producer:      suite.mockPublisher,
 				logEmitter:    suite.logEmitter,
 				metricEmitter: suite.metricEmitter,
+				buckets:       suite.buckets,
 			}
 
 			// Create record
@@ -776,6 +771,7 @@ func (suite *WRPMessageHandlerTestSuite) TestContextCancellation() {
 				producer:      suite.mockPublisher,
 				logEmitter:    suite.logEmitter,
 				metricEmitter: suite.metricEmitter,
+				buckets:       suite.buckets,
 			}
 
 			// Create test message and record
@@ -819,6 +815,7 @@ func (suite *WRPMessageHandlerTestSuite) TestConcurrentHandling() {
 		producer:      suite.mockPublisher,
 		logEmitter:    suite.logEmitter,
 		metricEmitter: suite.metricEmitter,
+		buckets:       suite.buckets,
 	}
 
 	// Create test message
@@ -952,6 +949,7 @@ func (suite *WRPMessageHandlerTestSuite) TestErrorScenarios() {
 				producer:      suite.mockPublisher,
 				logEmitter:    suite.logEmitter,
 				metricEmitter: suite.metricEmitter,
+				buckets:       suite.buckets,
 			}
 
 			record := tt.setupRecord()

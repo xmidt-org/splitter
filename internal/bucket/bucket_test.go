@@ -8,17 +8,17 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"github.com/xmidt-org/wrp-go/v3"
+	"github.com/xmidt-org/wrp-go/v5"
 )
 
 type BucketsSuite struct {
 	suite.Suite
-	buckets    Buckets
-	bucketDefs []Bucket
+	buckets    *Buckets
+	bucketDefs []BucketConfig
 }
 
 func (s *BucketsSuite) SetupTest() {
-	s.bucketDefs = []Bucket{
+	s.bucketDefs = []BucketConfig{
 		{"bucketA", 0.33},
 		{"bucketB", 0.66},
 		{"bucketC", 1.0},
@@ -29,7 +29,9 @@ func (s *BucketsSuite) SetupTest() {
 		PartitionKeyType: DeviceIdKeyName,
 	}
 	var err error
-	s.buckets, err = NewBuckets(cfg)
+	buckets, err := NewBuckets(cfg)
+	s.NoError(err)
+	s.buckets = buckets.(*Buckets)
 	s.Require().NoError(err)
 }
 
@@ -60,7 +62,7 @@ func (s *BucketsSuite) TestNewBuckets_InvalidKeyType() {
 }
 
 func (s *BucketsSuite) TestNewBuckets_NoBuckets() {
-	cfg := Config{}	
+	cfg := Config{}
 	_, err := NewBuckets(cfg)
 	assert.NoError(s.T(), err)
 }
