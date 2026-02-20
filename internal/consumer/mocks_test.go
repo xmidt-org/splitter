@@ -20,6 +20,8 @@ type MockClient struct {
 }
 
 func (m *MockClient) Ping(ctx context.Context) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	args := m.Called(ctx)
 	return args.Error(0)
 }
@@ -32,15 +34,21 @@ func (m *MockClient) PollFetches(ctx context.Context) Fetches {
 }
 
 func (m *MockClient) MarkCommitRecords(records ...*kgo.Record) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.Called(records)
 }
 
 func (m *MockClient) CommitUncommittedOffsets(ctx context.Context) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	args := m.Called(ctx)
 	return args.Error(0)
 }
 
 func (m *MockClient) PauseFetchTopics(topics ...string) []string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	args := m.Called(topics)
 	if len(args) == 0 {
 		return nil
@@ -52,14 +60,20 @@ func (m *MockClient) PauseFetchTopics(topics ...string) []string {
 }
 
 func (m *MockClient) ResumeFetchTopics(topics ...string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.Called(topics)
 }
 
 func (m *MockClient) Close() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.Called()
 }
 
 func (m *MockClient) CommitMarkedOffsets(ctx context.Context) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	args := m.Called(ctx)
 	return args.Error(0)
 }
