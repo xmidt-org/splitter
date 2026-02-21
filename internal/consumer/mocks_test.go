@@ -5,7 +5,6 @@ package consumer
 
 import (
 	"context"
-	"sync"
 
 	"github.com/stretchr/testify/mock"
 	"github.com/twmb/franz-go/pkg/kgo"
@@ -13,42 +12,40 @@ import (
 	"github.com/xmidt-org/wrpkafka"
 )
 
-// MockClient is a mock implementation of the Client interface
+// MockClient is a mock implementation of the Client interface.
+//
+// Note: This mock does NOT use an additional mutex beyond what testify's mock.Mock provides.
+// Adding a mutex caused data races on GitHub Actions because:
+// 1. The mock would lock and inspect method arguments (including context) for logging
+// 2. While locked, if the test goroutine called context.Cancel(), it would modify the context
+// 3. This created a race between reading (mock formatting) and writing (cancel modifying context state)
+//
+// Solution: testify's mock.Mock already has internal synchronization, and we use mock.MatchedBy
+// with simple functions for context parameters to avoid deep inspection during concurrent cancellation.
 type MockClient struct {
 	mock.Mock
-	mu sync.Mutex
 }
 
 func (m *MockClient) Ping(ctx context.Context) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
 	args := m.Called(ctx)
 	return args.Error(0)
 }
 
 func (m *MockClient) PollFetches(ctx context.Context) Fetches {
-	m.mu.Lock()
-	defer m.mu.Unlock()
 	args := m.Called(ctx)
 	return args.Get(0).(Fetches)
 }
 
 func (m *MockClient) MarkCommitRecords(records ...*kgo.Record) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
 	m.Called(records)
 }
 
 func (m *MockClient) CommitUncommittedOffsets(ctx context.Context) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
 	args := m.Called(ctx)
 	return args.Error(0)
 }
 
 func (m *MockClient) PauseFetchTopics(topics ...string) []string {
-	m.mu.Lock()
-	defer m.mu.Unlock()
 	args := m.Called(topics)
 	if len(args) == 0 {
 		return nil
@@ -60,20 +57,14 @@ func (m *MockClient) PauseFetchTopics(topics ...string) []string {
 }
 
 func (m *MockClient) ResumeFetchTopics(topics ...string) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
 	m.Called(topics)
 }
 
 func (m *MockClient) Close() {
-	m.mu.Lock()
-	defer m.mu.Unlock()
 	m.Called()
 }
 
 func (m *MockClient) CommitMarkedOffsets(ctx context.Context) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
 	args := m.Called(ctx)
 	return args.Error(0)
 }

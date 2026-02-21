@@ -53,6 +53,30 @@ func (s *ConsumerTestSuite) SetupTest() {
 	s.consumer.consecutiveFailures.Store(time.Now().Unix())
 }
 
+func GetConsumer() *KafkaConsumer {
+	mockClient := &MockClient{}
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	consumer := &KafkaConsumer{
+		client:  mockClient,
+		handler: &MockHandler{},
+		config: &consumerConfig{
+			brokers: []string{"localhost:9092"},
+			topics:  []string{"test-topic"},
+			groupID: "test-group",
+		},
+		logEmitter:                  log.NewNoop(),
+		metricEmitter:               metrics.NewNoop(),
+		ctx:                         ctx,
+		cancel:                      cancel,
+		consecutiveFailureThreshold: 60,
+		resumeDelaySeconds:          30,
+	}
+	consumer.consecutiveFailures.Store(time.Now().Unix())
+	return consumer
+}
+
 func (s *ConsumerTestSuite) TearDownTest() {
 	if s.consumer != nil && s.consumer.cancel != nil {
 		s.consumer.cancel()
@@ -156,7 +180,12 @@ func (s *ConsumerTestSuite) TestStart() {
 		{
 			name: "successful start",
 			setupMock: func(m *MockClient) {
-				m.On("Ping", s.consumer.ctx).Return(nil)
+				m.On("Ping", mock.Anything).Return(nil)
+				// PollFetches will be called by pollLoop goroutine after successful start
+				mockFetches := &MockFetches{}
+				mockFetches.On("Errors").Return([]*kgo.FetchError(nil))
+				mockFetches.On("EachRecord", mock.Anything).Return()
+				m.On("PollFetches", mock.Anything).Return(mockFetches).Maybe()
 			},
 			isRunning:   false,
 			expectError: false,
@@ -172,7 +201,7 @@ func (s *ConsumerTestSuite) TestStart() {
 		{
 			name: "ping fails",
 			setupMock: func(m *MockClient) {
-				m.On("Ping", s.consumer.ctx).Return(errors.New("connection failed"))
+				m.On("Ping", mock.Anything).Return(errors.New("connection failed"))
 			},
 			isRunning:   false,
 			expectError: true,
@@ -183,15 +212,15 @@ func (s *ConsumerTestSuite) TestStart() {
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
 			// Reset mock for each test
-			s.mockClient = &MockClient{}
-			s.consumer.client = s.mockClient
-			s.consumer.running = tt.isRunning
-
+			consumer := GetConsumer()
+			mockClient := &MockClient{}
 			if tt.setupMock != nil {
-				tt.setupMock(s.mockClient)
+				tt.setupMock(mockClient)
 			}
+			consumer.client = mockClient
+			consumer.running = tt.isRunning
 
-			err := s.consumer.Start()
+			err := consumer.Start()
 
 			if tt.expectError {
 				s.Error(err)
@@ -200,14 +229,10 @@ func (s *ConsumerTestSuite) TestStart() {
 				}
 			} else {
 				s.NoError(err)
-				s.True(s.consumer.IsRunning())
+				s.True(consumer.IsRunning())
 			}
 
-			// Clean up goroutines before asserting expectations
-			s.consumer.cancel()
-			s.consumer.wg.Wait()
-
-			s.mockClient.AssertExpectations(s.T())
+			mockClient.AssertExpectations(s.T())
 		})
 	}
 }
@@ -243,30 +268,32 @@ func (s *ConsumerTestSuite) TestStop() {
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			s.mockClient = &MockClient{}
-			s.consumer.client = s.mockClient
-			s.consumer.running = tt.isRunning
+			// Create a fresh consumer for each test
+			consumer := GetConsumer()
+			mockClient := &MockClient{}
+			consumer.client = mockClient
+			consumer.running = tt.isRunning
 
 			if tt.setupMock != nil {
-				tt.setupMock(s.mockClient)
+				tt.setupMock(mockClient)
 			}
 
 			ctx, cancel := context.WithTimeout(context.Background(), tt.timeout)
 			defer cancel()
 
-			err := s.consumer.Stop(ctx)
+			err := consumer.Stop(ctx)
 
 			if tt.expectError {
 				s.Error(err)
 			} else {
 				s.NoError(err)
-				s.False(s.consumer.IsRunning())
+				s.False(consumer.IsRunning())
 			}
 
-			s.consumer.cancel()
-			s.consumer.wg.Wait()
+			consumer.cancel()
+			consumer.wg.Wait()
 
-			s.mockClient.AssertExpectations(s.T())
+			mockClient.AssertExpectations(s.T())
 		})
 	}
 }
@@ -374,9 +401,6 @@ func (s *ConsumerTestSuite) TestHandleOutcome() {
 			} else if tt.expectHigherFailureCount {
 				s.Greater(failuresAfter, failuresBefore, "consecutive failures should be incremented")
 			}
-
-			s.consumer.cancel()
-			s.consumer.wg.Wait()
 
 			s.mockClient.AssertExpectations(s.T())
 		})
@@ -700,26 +724,33 @@ func (s *ConsumerTestSuite) TestPollLoop() {
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
+			// Create a fresh consumer for each test
+			consumer := GetConsumer()
 			ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
-			s.consumer.ctx = ctx
-			s.consumer.cancel = cancel
-			s.mockClient = &MockClient{}
+			consumer.ctx = ctx
+			consumer.cancel = cancel
+
+			mockClient := &MockClient{}
 			mf := &MockFetches{}
 			mh := &MockHandler{}
-			s.consumer.client = s.mockClient
-			s.consumer.handler = mh
+			consumer.client = mockClient
+			consumer.handler = mh
+
 			if tt.setup != nil {
-				tt.setup(s.mockClient, mf, mh)
+				tt.setup(mockClient, mf, mh)
 			}
+
 			done := make(chan struct{})
-			s.consumer.wg.Add(1)
+			consumer.wg.Add(1)
 			go func() {
-				s.consumer.pollLoop()
+				consumer.pollLoop()
 				close(done)
 			}()
+
 			if tt.ctxDone {
 				cancel()
 			}
+
 			select {
 			case <-done:
 				// exited as expected
@@ -727,10 +758,10 @@ func (s *ConsumerTestSuite) TestPollLoop() {
 				s.Fail("pollLoop did not exit in time")
 			}
 
-			s.consumer.cancel()
-			s.consumer.wg.Wait()
+			consumer.cancel()
+			consumer.wg.Wait()
 
-			s.mockClient.AssertExpectations(s.T())
+			mockClient.AssertExpectations(s.T())
 			mf.AssertExpectations(s.T())
 			mh.AssertExpectations(s.T())
 		})
