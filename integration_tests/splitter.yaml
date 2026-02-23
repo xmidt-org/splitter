@@ -1,6 +1,34 @@
 # SPDX-FileCopyrightText: 2026 Comcast Cable Communications Management, LLC
 # SPDX-License-Identifier: Apache-2.0
 ---
-consumer:
+# Complete integration test configuration
+
+servers((replace)):
+  health:
+    http:
+      address: ":0"  # Dynamic port to avoid conflicts
+    path: /health
+  
+  metrics:
+    http:
+      address: ":0"  # Dynamic port to avoid conflicts
+    path: /metrics
+    
+  pprof:
+    http:
+      address: ":0"  # Dynamic port to avoid conflicts
+    path: /debug/pprof/
+
+producer((replace)):
   brokers:
-    - "${KAFKA_BROKERS}"  # This will expand to the env var value
+    - "${KAFKA_BROKERS}"
+  topic_routes:
+    - pattern: "*"
+      topic: "default-events"
+
+consumer((replace)):
+  brokers:
+    - "${KAFKA_BROKERS}"
+  topics:
+    - "wrp-events"
+  group_id: "splitter-test"

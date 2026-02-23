@@ -5,6 +5,8 @@ package integrationtests
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -17,7 +19,7 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/kafka"
 	"github.com/twmb/franz-go/pkg/kgo"
-	"github.com/xmidt-org/wrp-go/v3"
+	"github.com/xmidt-org/wrp-go/v5"
 	"go.uber.org/fx"
 )
 
@@ -185,6 +187,101 @@ func produceMessage(ctx context.Context, t *testing.T, brokerAddress, topic stri
 
 	t.Logf("Produced message to topic %s", topic)
 	return nil
+}
+
+// produceWRPMessage writes a WRP message to the Kafka broker using proper WRP msgpack encoding.
+func produceWRPMessage(ctx context.Context, t *testing.T, brokerAddress, topic string, msg *wrp.Message) error {
+	t.Helper()
+
+	// Create producer client
+	client, err := kgo.NewClient(
+		kgo.SeedBrokers(brokerAddress),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create kafka producer: %w", err)
+	}
+	defer client.Close()
+
+	// Encode WRP message using msgpack (same format the service expects)
+	var msgBytes []byte
+	encoder := wrp.NewEncoderBytes(&msgBytes, wrp.Msgpack)
+	if err := encoder.Encode(msg); err != nil {
+		return fmt.Errorf("failed to encode WRP message: %w", err)
+	}
+
+	// Produce the message
+	record := &kgo.Record{
+		Topic: topic,
+		Value: msgBytes,
+	}
+
+	// Add key if message has a source
+	if msg.Source != "" {
+		record.Key = []byte(msg.Source)
+	}
+
+	results := client.ProduceSync(ctx, record)
+	if err := results[0].Err; err != nil {
+		return fmt.Errorf("failed to produce WRP message to kafka: %w", err)
+	}
+
+	t.Logf("Produced WRP message (type: %s, uuid: %s) to topic %s",
+		msg.Type.String(), msg.TransactionUUID, topic)
+	return nil
+}
+
+// generateUUID creates a simple UUID for testing purposes
+func generateUUID() string {
+	bytes := make([]byte, 16)
+	rand.Read(bytes)
+	return hex.EncodeToString(bytes[:4]) + "-" +
+		hex.EncodeToString(bytes[4:6]) + "-" +
+		hex.EncodeToString(bytes[6:8]) + "-" +
+		hex.EncodeToString(bytes[8:10]) + "-" +
+		hex.EncodeToString(bytes[10:])
+}
+
+// cleanupMessages consumes any existing messages from a topic to prevent test interference
+func cleanupMessages(t *testing.T, brokerAddress, topic string) {
+	t.Helper()
+
+	// Create consumer client with short timeout
+	client, err := kgo.NewClient(
+		kgo.SeedBrokers(brokerAddress),
+		kgo.ConsumeTopics(topic),
+		kgo.ConsumerGroup("cleanup-"+generateUUID()),
+		kgo.SessionTimeout(5*time.Second),
+		kgo.DisableAutoCommit(),
+	)
+	if err != nil {
+		t.Logf("Failed to create cleanup consumer for %s: %v", topic, err)
+		return
+	}
+	defer client.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	// Consume existing messages quickly
+	cleanedCount := 0
+	for {
+		select {
+		case <-ctx.Done():
+			if cleanedCount > 0 {
+				t.Logf("Cleaned up %d existing messages from topic %s", cleanedCount, topic)
+			}
+			return
+		default:
+			fetches := client.PollFetches(ctx)
+			if fetches.IsClientClosed() || len(fetches.Records()) == 0 {
+				if cleanedCount > 0 {
+					t.Logf("Cleaned up %d existing messages from topic %s", cleanedCount, topic)
+				}
+				return
+			}
+			cleanedCount += len(fetches.Records())
+		}
+	}
 }
 
 func consumeMessages(t *testing.T, broker string, topic string, timeout time.Duration) []*kgo.Record {
