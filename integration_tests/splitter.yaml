@@ -8,12 +8,12 @@ servers((replace)):
     http:
       address: ":0"  # Dynamic port to avoid conflicts
     path: /health
-  
+
   metrics:
     http:
       address: ":0"  # Dynamic port to avoid conflicts
     path: /metrics
-    
+
   pprof:
     http:
       address: ":0"  # Dynamic port to avoid conflicts
