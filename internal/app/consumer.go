@@ -58,7 +58,7 @@ func provideConsumer(in ConsumerIn) (ConsumerOut, error) {
 		// Required options
 		consumer.WithBrokers(cfg.Brokers...),
 		consumer.WithTopics(cfg.Topics...),
-		consumer.WithGroupID(fmt.Sprintf("%s%s", cfg.GroupID, in.BucketConfig.TargetBucket)),
+		consumer.WithGroupID(fmt.Sprintf("%s.%s", cfg.GroupID, in.BucketConfig.TargetBucket)),
 
 		// Message handler
 		consumer.WithMessageHandler(consumer.MessageHandlerFunc(handler.HandleMessage)),
