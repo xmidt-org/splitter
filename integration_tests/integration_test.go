@@ -56,11 +56,6 @@ func (s *SplitterTestSuite) SetupTest() {
 	// Create necessary topics for testing
 	s.createTopics()
 
-	// Clean up any existing messages before starting the test
-	s.T().Log("Cleaning up existing messages...")
-	cleanupMessages(s.T(), s.broker.Address, inputTopic)
-	cleanupMessages(s.T(), s.broker.Address, outputTopic)
-
 	// Give the service time to start consuming
 	time.Sleep(2 * time.Second)
 }

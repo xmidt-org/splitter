@@ -243,49 +243,6 @@ func generateUUID() string {
 		hex.EncodeToString(bytes[10:])
 }
 
-// cleanupMessages consumes any existing messages from a topic to prevent test interference
-func cleanupMessages(t *testing.T, brokerAddress, topic string) {
-	t.Helper()
-
-	// Create consumer client with short timeout
-	client, err := kgo.NewClient(
-		kgo.SeedBrokers(brokerAddress),
-		kgo.ConsumeTopics(topic),
-		kgo.ConsumerGroup("cleanup-"+generateUUID()),
-		kgo.SessionTimeout(5*time.Second),
-		kgo.DisableAutoCommit(),
-	)
-	if err != nil {
-		t.Logf("Failed to create cleanup consumer for %s: %v", topic, err)
-		return
-	}
-	defer client.Close()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
-
-	// Consume existing messages quickly
-	cleanedCount := 0
-	for {
-		select {
-		case <-ctx.Done():
-			if cleanedCount > 0 {
-				t.Logf("Cleaned up %d existing messages from topic %s", cleanedCount, topic)
-			}
-			return
-		default:
-			fetches := client.PollFetches(ctx)
-			if fetches.IsClientClosed() || len(fetches.Records()) == 0 {
-				if cleanedCount > 0 {
-					t.Logf("Cleaned up %d existing messages from topic %s", cleanedCount, topic)
-				}
-				return
-			}
-			cleanedCount += len(fetches.Records())
-		}
-	}
-}
-
 func consumeMessages(t *testing.T, broker string, topic string, timeout time.Duration) []*kgo.Record {
 	t.Helper()
 
