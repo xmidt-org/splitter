@@ -13,13 +13,15 @@ import (
 	"os"
 	"testing"
 	"time"
-	"xmidt-org/splitter/internal/app"
+
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/kafka"
 	"github.com/twmb/franz-go/pkg/kgo"
 	"github.com/xmidt-org/wrp-go/v5"
 	"go.uber.org/fx"
+
+	"xmidt-org/splitter/internal/app"
 )
 
 // KafkaBroker represents a Kafka broker container with connection details and cleanup function.
