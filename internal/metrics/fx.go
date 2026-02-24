@@ -57,7 +57,7 @@ var fxMetrics = []metricDefinition{
 		Type:   COUNTER,
 		Name:   ConsumerFetchErrors,
 		Help:   "Total number of fetch errors",
-		Labels: fmt.Sprintf("%s,%s,%s", PartitionLabel, TopicLabel, ClientIdLabel),
+		Labels: fmt.Sprintf("%s,%s,%s", PartitionLabel, GroupLabel, ClientIdLabel),
 	},
 	{
 		Type:   COUNTER,
@@ -69,7 +69,7 @@ var fxMetrics = []metricDefinition{
 		Type:   GAUGE,
 		Name:   ConsumerPauses,
 		Help:   "Current pause state (1=paused, 0=running)",
-		Labels: ClientIdLabel,
+		Labels: fmt.Sprintf("%s,%s", GroupLabel, ClientIdLabel),
 	},
 }
 

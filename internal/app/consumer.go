@@ -19,6 +19,7 @@ import (
 type ConsumerIn struct {
 	fx.In
 	Config        consumer.Config
+	BucketConfig  bucket.Config
 	Publisher     publisher.Publisher
 	LogEmitter    *observe.Subject[log.Event]
 	MetricEmitter *observe.Subject[metrics.Event]
@@ -57,7 +58,7 @@ func provideConsumer(in ConsumerIn) (ConsumerOut, error) {
 		// Required options
 		consumer.WithBrokers(cfg.Brokers...),
 		consumer.WithTopics(cfg.Topics...),
-		consumer.WithGroupID(cfg.GroupID),
+		consumer.WithGroupID(fmt.Sprintf("%s%s", cfg.GroupID, in.BucketConfig.TargetBucket)),
 
 		// Message handler
 		consumer.WithMessageHandler(consumer.MessageHandlerFunc(handler.HandleMessage)),
