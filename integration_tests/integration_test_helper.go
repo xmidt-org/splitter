@@ -1,10 +1,14 @@
 // SPDX-FileCopyrightText: 2026 Comcast Cable Communications Management, LLC
 // SPDX-License-Identifier: Apache-2.0
 
+//go:build integration
+
 package integrationtests
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -17,7 +21,7 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/kafka"
 	"github.com/twmb/franz-go/pkg/kgo"
-	"github.com/xmidt-org/wrp-go/v3"
+	"github.com/xmidt-org/wrp-go/v5"
 	"go.uber.org/fx"
 )
 
@@ -185,6 +189,58 @@ func produceMessage(ctx context.Context, t *testing.T, brokerAddress, topic stri
 
 	t.Logf("Produced message to topic %s", topic)
 	return nil
+}
+
+// produceWRPMessage writes a WRP message to the Kafka broker using proper WRP msgpack encoding.
+func produceWRPMessage(ctx context.Context, t *testing.T, brokerAddress, topic string, msg *wrp.Message) error {
+	t.Helper()
+
+	// Create producer client
+	client, err := kgo.NewClient(
+		kgo.SeedBrokers(brokerAddress),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create kafka producer: %w", err)
+	}
+	defer client.Close()
+
+	// Encode WRP message using msgpack (same format the service expects)
+	var msgBytes []byte
+	encoder := wrp.NewEncoderBytes(&msgBytes, wrp.Msgpack)
+	if err := encoder.Encode(msg); err != nil {
+		return fmt.Errorf("failed to encode WRP message: %w", err)
+	}
+
+	// Produce the message
+	record := &kgo.Record{
+		Topic: topic,
+		Value: msgBytes,
+	}
+
+	// Add key if message has a source
+	if msg.Source != "" {
+		record.Key = []byte(msg.Source)
+	}
+
+	results := client.ProduceSync(ctx, record)
+	if err := results[0].Err; err != nil {
+		return fmt.Errorf("failed to produce WRP message to kafka: %w", err)
+	}
+
+	t.Logf("Produced WRP message (type: %s, uuid: %s) to topic %s",
+		msg.Type.String(), msg.TransactionUUID, topic)
+	return nil
+}
+
+// generateUUID creates a simple UUID for testing purposes
+func generateUUID() string {
+	bytes := make([]byte, 16)
+	rand.Read(bytes)
+	return hex.EncodeToString(bytes[:4]) + "-" +
+		hex.EncodeToString(bytes[4:6]) + "-" +
+		hex.EncodeToString(bytes[6:8]) + "-" +
+		hex.EncodeToString(bytes[8:10]) + "-" +
+		hex.EncodeToString(bytes[10:])
 }
 
 func consumeMessages(t *testing.T, broker string, topic string, timeout time.Duration) []*kgo.Record {
