@@ -45,7 +45,7 @@ buckets:
     - name: "bucket-0"
       threshold: 0.5
 
-  Required: Target bucket name to route messages to
+  # Required: Target bucket name to route messages to
   target_bucket: "bucket-0"
   partition_key_type: "device_id"
   missing_partition_key_action: "include" # "include" (default), "drop"
