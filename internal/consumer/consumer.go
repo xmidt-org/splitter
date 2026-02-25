@@ -99,8 +99,8 @@ func New(opts ...Option) (Consumer, error) {
 			consumer.metricEmitter.Notify(metrics.Event{
 				Name: metrics.ConsumerCommitErrors,
 				Labels: []string{
-					metrics.GroupLabel, req.Group,
 					metrics.MemberIdLabel, req.MemberID,
+					metrics.GroupLabel, consumer.config.groupID,
 					metrics.ClientIdLabel, consumer.clientId,
 				},
 				Value: 1,
@@ -246,7 +246,8 @@ func (c *KafkaConsumer) pollLoop() {
 					Name: metrics.ConsumerFetchErrors,
 					Labels: []string{
 						metrics.PartitionLabel, fmt.Sprintf("%d", err.Partition),
-						metrics.TopicLabel, err.Topic,
+						metrics.GroupLabel, c.config.groupID,
+						metrics.ClientIdLabel, c.clientId,
 					},
 					Value: 1,
 				})
@@ -380,6 +381,7 @@ func (c *KafkaConsumer) pauseFetchTopics() {
 		Name: metrics.ConsumerPauses,
 		Labels: []string{
 			metrics.ClientIdLabel, c.clientId,
+			metrics.GroupLabel, c.config.groupID,
 		},
 		Value: 1,
 	})

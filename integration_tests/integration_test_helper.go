@@ -9,13 +9,10 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"os"
 	"testing"
 	"time"
-
-	"xmidt-org/splitter/internal/app"
 
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
@@ -23,6 +20,8 @@ import (
 	"github.com/twmb/franz-go/pkg/kgo"
 	"github.com/xmidt-org/wrp-go/v5"
 	"go.uber.org/fx"
+
+	"xmidt-org/splitter/internal/app"
 )
 
 // KafkaBroker represents a Kafka broker container with connection details and cleanup function.
@@ -52,9 +51,13 @@ type KafkaBroker struct {
 func setupKafka(ctx context.Context, t *testing.T) (*KafkaBroker, error) {
 	t.Helper()
 
+	// Create a context with extended timeout for container startup
+	startupCtx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	defer cancel()
+
 	// Use the official Kafka testcontainer module with RunContainer which handles
 	// configuration automatically
-	kafkaContainer, err := kafka.Run(ctx,
+	kafkaContainer, err := kafka.Run(startupCtx,
 		"confluentinc/confluent-local:7.8.0",
 		kafka.WithClusterID("test-cluster"),
 	)
@@ -153,45 +156,6 @@ func startService(ctx context.Context, t *testing.T, brokerAddress string) (*fx.
 //	}
 //	err := produceMessage(ctx, t, broker.Address, "raw-events", msg)
 //	require.NoError(t, err)
-func produceMessage(ctx context.Context, t *testing.T, brokerAddress, topic string, msg *wrp.Message) error {
-	t.Helper()
-
-	// Create producer client
-	client, err := kgo.NewClient(
-		kgo.SeedBrokers(brokerAddress),
-	)
-	if err != nil {
-		return fmt.Errorf("failed to create kafka producer: %w", err)
-	}
-	defer client.Close()
-
-	// Marshal the WRP message to JSON
-	msgBytes, err := json.Marshal(msg)
-	if err != nil {
-		return fmt.Errorf("failed to marshal WRP message: %w", err)
-	}
-
-	// Produce the message
-	record := &kgo.Record{
-		Topic: topic,
-		Value: msgBytes,
-	}
-
-	// Add key if message has a source
-	if msg.Source != "" {
-		record.Key = []byte(msg.Source)
-	}
-
-	results := client.ProduceSync(ctx, record)
-	if err := results[0].Err; err != nil {
-		return fmt.Errorf("failed to produce message to kafka: %w", err)
-	}
-
-	t.Logf("Produced message to topic %s", topic)
-	return nil
-}
-
-// produceWRPMessage writes a WRP message to the Kafka broker using proper WRP msgpack encoding.
 func produceWRPMessage(ctx context.Context, t *testing.T, brokerAddress, topic string, msg *wrp.Message) error {
 	t.Helper()
 

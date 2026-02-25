@@ -41,7 +41,7 @@ prometheus_handler:
 
 buckets:
 #   List of all bucket names (e.g. "bucket-0", "bucket-1", "bucket-2")
-  possible_buckets:  # goshtalt is currently always appending rather than replacing, we can't have default buckets right now
+  # possible_buckets:
     # - name: "bucket-0"
     #   threshold: 0.5
 
