@@ -11,22 +11,26 @@ import (
 	"github.com/xmidt-org/wrp-go/v5"
 )
 
+var TestBuckets = []BucketSettings{
+	{"bucketA", 0.33},
+	{"bucketB", 0.66},
+	{"bucketC", 1.0},
+}
+
 type BucketsSuite struct {
 	suite.Suite
 	buckets    *Buckets
-	bucketDefs []BucketConfig
+	bucketDefs []BucketSettings
 }
 
 func (s *BucketsSuite) SetupTest() {
-	s.bucketDefs = []BucketConfig{
-		{"bucketA", 0.33},
-		{"bucketB", 0.66},
-		{"bucketC", 1.0},
-	}
+	s.bucketDefs = TestBuckets
+
 	cfg := Config{
-		TargetBucket:     "bucketB",
-		PossibleBuckets:  s.bucketDefs,
-		PartitionKeyType: DeviceIdKeyName,
+		TargetBucket:              "bucketB",
+		PossibleBuckets:           s.bucketDefs,
+		PartitionKeyType:          DeviceIdKeyName,
+		MissingPartitionKeyAction: "drop",
 	}
 	var err error
 	buckets, err := NewBuckets(cfg)
@@ -43,9 +47,10 @@ func (s *BucketsSuite) TestNewBuckets_TargetIndex() {
 
 func (s *BucketsSuite) TestNewBuckets_InvalidTarget() {
 	cfg := Config{
-		TargetBucket:     "notfound",
-		PossibleBuckets:  s.bucketDefs,
-		PartitionKeyType: DeviceIdKeyName,
+		TargetBucket:              "notfound",
+		PossibleBuckets:           s.bucketDefs,
+		PartitionKeyType:          DeviceIdKeyName,
+		MissingPartitionKeyAction: "drop",
 	}
 	_, err := NewBuckets(cfg)
 	assert.Error(s.T(), err)
@@ -53,9 +58,10 @@ func (s *BucketsSuite) TestNewBuckets_InvalidTarget() {
 
 func (s *BucketsSuite) TestNewBuckets_InvalidKeyType() {
 	cfg := Config{
-		TargetBucket:     "bucketA",
-		PossibleBuckets:  s.bucketDefs,
-		PartitionKeyType: "unknown_key",
+		TargetBucket:              "bucketA",
+		PossibleBuckets:           s.bucketDefs,
+		PartitionKeyType:          "unknown_key",
+		MissingPartitionKeyAction: "drop",
 	}
 	_, err := NewBuckets(cfg)
 	assert.Error(s.T(), err)
@@ -71,7 +77,9 @@ func (s *BucketsSuite) TestNoBuckets() {
 	buckets, err := NewBuckets(Config{})
 	assert.NoError(s.T(), err)
 	msg := &wrp.Message{Source: "mac:112233445566"}
-	assert.True(s.T(), buckets.IsInTargetBucket(msg))
+	inBucket, err := buckets.IsInTargetBucket(msg)
+	assert.NoError(s.T(), err)
+	assert.True(s.T(), inBucket)
 }
 
 func (s *BucketsSuite) TestIsInBucket_True() {
@@ -80,7 +88,37 @@ func (s *BucketsSuite) TestIsInBucket_True() {
 	partitioner := NewPartitioner()
 	bucket, _ := partitioner.Partition(partitionKey, s.buckets.thresholds)
 	s.buckets.targetBucketIndex = bucket
-	assert.True(s.T(), s.buckets.IsInTargetBucket(msg))
+	inBucket, err := s.buckets.IsInTargetBucket(msg)
+	assert.NoError(s.T(), err)
+	assert.True(s.T(), inBucket)
+}
+
+// this specific mac is in bucket B
+func (s *BucketsSuite) TestIsInBucketHardcodedValue_True() {
+	msg := &wrp.Message{Source: "mac:999999999999"}
+	inBucket, err := s.buckets.IsInTargetBucket(msg)
+	assert.NoError(s.T(), err)
+	assert.True(s.T(), inBucket)
+}
+
+// this specific mac is not in bucket A
+func (s *BucketsSuite) TestIsInBucketHardcodedValue_False() {
+	s.bucketDefs = TestBuckets
+
+	cfg := Config{
+		TargetBucket:              "bucketA",
+		PossibleBuckets:           s.bucketDefs,
+		PartitionKeyType:          DeviceIdKeyName,
+		MissingPartitionKeyAction: "drop",
+	}
+	var err error
+	buckets, err := NewBuckets(cfg)
+
+	s.NoError(err)
+	msg := &wrp.Message{Source: "mac:999999999999"}
+	inBucket, err := buckets.IsInTargetBucket(msg)
+	assert.NoError(s.T(), err)
+	assert.False(s.T(), inBucket)
 }
 
 func (s *BucketsSuite) TestIsInBucket_False() {
@@ -89,12 +127,36 @@ func (s *BucketsSuite) TestIsInBucket_False() {
 	partitioner := NewPartitioner()
 	bucket, _ := partitioner.Partition(partitionKey, s.buckets.thresholds)
 	s.buckets.targetBucketIndex = (bucket + 1) % len(s.buckets.thresholds)
-	assert.False(s.T(), s.buckets.IsInTargetBucket(msg))
+	inBucket, err := s.buckets.IsInTargetBucket(msg)
+	assert.NoError(s.T(), err)
+	assert.False(s.T(), inBucket)
 }
 
 func (s *BucketsSuite) TestIsInBucket_InvalidKey() {
 	msg := &wrp.Message{Source: "invalid"}
-	assert.False(s.T(), s.buckets.IsInTargetBucket(msg))
+	inBucket, err := s.buckets.IsInTargetBucket(msg)
+	assert.Error(s.T(), err)
+	assert.False(s.T(), inBucket)
+}
+
+func (s *BucketsSuite) TestIsInBucket_InvalidKey_Include() {
+	s.bucketDefs = TestBuckets
+
+	cfg := Config{
+		TargetBucket:              "bucketA",
+		PossibleBuckets:           s.bucketDefs,
+		PartitionKeyType:          DeviceIdKeyName,
+		MissingPartitionKeyAction: "include",
+	}
+
+	var err error
+	buckets, err := NewBuckets(cfg)
+	s.NoError(err)
+
+	msg := &wrp.Message{Source: "invalid"}
+	inBucket, err := buckets.IsInTargetBucket(msg)
+	assert.Error(s.T(), err)
+	assert.True(s.T(), inBucket)
 }
 
 func (s *BucketsSuite) TestGetPartitionKey_DeviceId() {
@@ -102,6 +164,29 @@ func (s *BucketsSuite) TestGetPartitionKey_DeviceId() {
 	key, err := s.buckets.getPartitionKey(msg)
 	assert.NoError(s.T(), err)
 	assert.Equal(s.T(), "mac:112233445566", key)
+
+	msg = &wrp.Message{
+		Source:      "dns:talaria-cd-useast1-0z16z0y1u01mrqf1n-000.xmidt.comcast.com",
+		Destination: "event:device-status/mac:4ca161000113/online",
+	}
+	key, err = s.buckets.getPartitionKey(msg)
+	assert.NoError(s.T(), err)
+	assert.Equal(s.T(), "dns:talaria-cd-useast1-0z16z0y1u01mrqf1n-000.xmidt.comcast.com", key)
+
+	msg = &wrp.Message{
+		Source:      "not-a-valid-source",
+		Destination: "event:device-status/mac:4ca161000113/online",
+	}
+	key, err = s.buckets.getPartitionKey(msg)
+	assert.NoError(s.T(), err)
+	assert.Equal(s.T(), "mac:4ca161000113", key)
+
+	msg = &wrp.Message{
+		Source:      "not-a-valid-source",
+		Destination: "not-a-valid-destination",
+	}
+	key, err = s.buckets.getPartitionKey(msg)
+	assert.Error(s.T(), err)
 }
 
 func (s *BucketsSuite) TestGetPartitionKey_InvalidType() {
@@ -109,12 +194,6 @@ func (s *BucketsSuite) TestGetPartitionKey_InvalidType() {
 	b.partitionKeyType = -1
 	msg := &wrp.Message{Source: "mac:112233445566"}
 	_, err := b.getPartitionKey(msg)
-	assert.Error(s.T(), err)
-}
-
-func (s *BucketsSuite) TestParseDeviceId_Invalid() {
-	msg := &wrp.Message{Source: "not-a-device-id"}
-	_, err := parseDeviceId(msg)
 	assert.Error(s.T(), err)
 }
 

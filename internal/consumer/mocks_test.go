@@ -97,9 +97,9 @@ type MockBuckets struct {
 	mock.Mock
 }
 
-func (m *MockBuckets) IsInTargetBucket(msg *wrp.Message) bool {
+func (m *MockBuckets) IsInTargetBucket(msg *wrp.Message) (bool, error) {
 	args := m.Called(msg)
-	return args.Bool(0)
+	return args.Bool(0), args.Error(1)
 }
 
 // MockPublisher implements publisher.Publisher for testing
