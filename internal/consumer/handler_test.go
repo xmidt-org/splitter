@@ -56,7 +56,7 @@ func (suite *HandlerTestSuite) TestHandleMessage_NotInTargetBucket() {
 	enc := wrp.NewEncoder(&buf, wrp.Msgpack)
 	_ = enc.Encode(msg)
 	b := buf.Bytes()
-	suite.buckets.On("IsInTargetBucket", mock.Anything).Return(false).Once()
+	suite.buckets.On("IsInTargetBucket", mock.Anything).Return(false, nil).Once()
 	record := &kgo.Record{Value: b}
 	outcome, err := suite.handler.HandleMessage(context.Background(), record)
 	assert.NoError(suite.T(), err)
@@ -70,7 +70,7 @@ func (suite *HandlerTestSuite) TestHandleMessage_ProduceError() {
 	enc := wrp.NewEncoder(&buf, wrp.Msgpack)
 	_ = enc.Encode(msg)
 	b := buf.Bytes()
-	suite.buckets.On("IsInTargetBucket", mock.Anything).Return(true).Once()
+	suite.buckets.On("IsInTargetBucket", mock.Anything).Return(true, nil).Once()
 	suite.producer.On("Produce", mock.Anything, mock.Anything).Return(wrpkafka.Failed, errors.New("produce fail")).Once()
 	record := &kgo.Record{Value: b}
 	outcome, err := suite.handler.HandleMessage(context.Background(), record)
@@ -86,7 +86,7 @@ func (suite *HandlerTestSuite) TestHandleMessage_Success() {
 	enc := wrp.NewEncoder(&buf, wrp.Msgpack)
 	_ = enc.Encode(msg)
 	b := buf.Bytes()
-	suite.buckets.On("IsInTargetBucket", mock.Anything).Return(true).Once()
+	suite.buckets.On("IsInTargetBucket", mock.Anything).Return(true, nil).Once()
 	suite.producer.On("Produce", mock.Anything, mock.Anything).Return(wrpkafka.Attempted, nil).Once()
 	record := &kgo.Record{Value: b}
 	outcome, err := suite.handler.HandleMessage(context.Background(), record)
