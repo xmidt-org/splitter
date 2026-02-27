@@ -109,12 +109,20 @@ func (h *WRPMessageHandler) HandleMessage(ctx context.Context, record *kgo.Recor
 		"transaction_uuid": msg.TransactionUUID,
 	})
 
-	if !h.buckets.IsInTargetBucket(&msg) {
+	inTargetBucket, err := h.buckets.IsInTargetBucket(&msg)
+	if err != nil {
+		h.emitLog(log.LevelError, "failed to determine target bucket", map[string]any{
+			"error": err.Error(),
+		})
+		return Failed, fmt.Errorf("failed to determine target bucket: %w", err)
+	}
+
+	if !inTargetBucket {
 		h.emitLog(log.LevelDebug, "message not in target bucket, skipping", map[string]any{
 			"source":      msg.Source,
 			"destination": msg.Destination,
 		})
-		// TODO - can't use wrpkafka for the return
+
 		return Skipped, nil
 	}
 

@@ -40,14 +40,15 @@ prometheus_handler:
   timeout: 5s
 
 buckets:
-#   List of all bucket names (e.g. "bucket-0", "bucket-1", "bucket-2")
-  # possible_buckets:
-    # - name: "bucket-0"
-    #   threshold: 0.5
+#  List of all bucket names (e.g. "bucket-0", "bucket-1", "bucket-2")
+  possible_buckets:
+    - name: "bucket-0"
+      threshold: 0.5
 
   # Required: Target bucket name to route messages to
-  # target_bucket: "bucket-0"
-  # partition_key_type: "device_id"
+  target_bucket: "bucket-0"
+  partition_key_type: "device_id"
+  missing_partition_key_action: "include" # "include" (default), "drop"
 
 producer:
   brokers:
