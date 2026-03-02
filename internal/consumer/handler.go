@@ -114,7 +114,7 @@ func (h *WRPMessageHandler) HandleMessage(ctx context.Context, record *kgo.Recor
 		h.emitLog(log.LevelError, "failed to determine target bucket", map[string]any{
 			"error": err.Error(),
 		})
-		return Failed, fmt.Errorf("failed to determine target bucket: %w", err)
+		// add a metric here for NoBucketKeyFound
 	}
 
 	if !inTargetBucket {
