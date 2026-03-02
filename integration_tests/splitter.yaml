@@ -25,6 +25,8 @@ producer((replace)):
   topic_routes:
     - pattern: "*"
       topic: "default-events"
+    - pattern: "device-status"
+      topic: "device-status-events"
 
 consumer((replace)):
   brokers:

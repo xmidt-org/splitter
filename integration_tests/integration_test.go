@@ -17,10 +17,11 @@ import (
 )
 
 const (
-	inputTopic    = "wrp-events"     // Topic the service consumes from
-	outputTopic   = "default-events" // Topic the service produces to
-	timeoutShort  = 5 * time.Second  // Short timeout for basic operations
-	timeoutMedium = 10 * time.Second // Medium timeout for processing
+	inputTopic              = "wrp-events"           // Topic the service consumes from
+	defaultOutputTopic      = "default-events"       // Default topic for general events
+	deviceStatusOutputTopic = "device-status-events" // Topic for device status events
+	timeoutShort            = 5 * time.Second        // Short timeout for basic operations
+	timeoutMedium           = 10 * time.Second       // Medium timeout for processing
 )
 
 // SplitterTestSuite is a test suite for integration testing of wrp-kafka-splitter.
@@ -54,7 +55,7 @@ func (s *SplitterTestSuite) SetupTest() {
 	s.Require().NoError(err, "Failed to start splitter service")
 
 	// Create necessary topics for testing
-	s.createTopics()
+	s.createTopics(inputTopic, defaultOutputTopic, deviceStatusOutputTopic)
 
 	// Give the service time to start consuming
 	time.Sleep(2 * time.Second)
@@ -68,9 +69,7 @@ func (s *SplitterTestSuite) TearDownTest() {
 }
 
 // createTopics creates the necessary Kafka topics for testing
-func (s *SplitterTestSuite) createTopics() {
-	topics := []string{inputTopic, outputTopic}
-
+func (s *SplitterTestSuite) createTopics(topics ...string) {
 	for _, topic := range topics {
 		s.broker.container.Exec(s.ctx, []string{
 			"kafka-topics", "--create",
@@ -101,7 +100,7 @@ func TestSplitterIntegration(t *testing.T) {
 }
 
 // TestSplitterStartup verifies the basic startup functionality
-func (s *SplitterTestSuite) TestSplitterBasic() {
+func (s *SplitterTestSuite) TestMultipleOutputTopics() {
 	// If we get here, both Kafka and the splitter started successfully
 	s.Require().NotNil(s.app, "Splitter app should be running")
 	s.Require().NotNil(s.broker, "Kafka broker should be running")
@@ -111,16 +110,19 @@ func (s *SplitterTestSuite) TestSplitterBasic() {
 	msg := s.createWRPMessage(
 		wrp.SimpleEventMessageType,
 		"mac:aa11bb22cc33/service",
-		"event:startup-test/online",
-		`{"event": "startup_test"}`,
+		"event:device-status/online",
+		`{"event": "device-status"}`,
 	)
 
 	// Produce message to topic
 	err := produceWRPMessage(s.ctx, s.T(), s.broker.Address, inputTopic, msg)
 	s.Require().NoError(err, "Failed to produce message to input topic")
 
-	// Consume from topic to verify routing
-	records := consumeMessages(s.T(), s.broker.Address, outputTopic, timeoutShort)
+	// Consume from topic(s) to verify routing
+	records := consumeMessages(s.T(), s.broker.Address, defaultOutputTopic, timeoutShort)
+	s.Require().Len(records, 1, "Should have routed exactly one message")
+
+	records = consumeMessages(s.T(), s.broker.Address, deviceStatusOutputTopic, timeoutShort)
 	s.Require().Len(records, 1, "Should have routed exactly one message")
 
 	// Verify the routed message content
@@ -159,7 +161,7 @@ func (s *SplitterTestSuite) TestHighVolumeProcessing() {
 	}
 
 	// Consume all routed messages
-	records := consumeMessages(s.T(), s.broker.Address, outputTopic, timeoutMedium)
+	records := consumeMessages(s.T(), s.broker.Address, defaultOutputTopic, timeoutMedium)
 	s.Require().Len(records, messageCount, "Should route all %d messages", messageCount)
 
 	// Verify all messages were processed correctly
@@ -211,7 +213,7 @@ func (s *SplitterTestSuite) TestConcurrentProcessing() {
 	}
 
 	// Verify all messages were routed
-	records := consumeMessages(s.T(), s.broker.Address, outputTopic, timeoutMedium)
+	records := consumeMessages(s.T(), s.broker.Address, defaultOutputTopic, timeoutMedium)
 	s.Require().Len(records, totalMessages, "Should route all concurrent messages")
 
 	// Verify message integrity
