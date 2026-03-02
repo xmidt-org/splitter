@@ -19,7 +19,7 @@ import (
 const (
 	inputTopic    = "wrp-events"     // Topic the service consumes from
 	defaultOutputTopic = "default-events" // Default topic for general events
-	deviceStatusTopic  = "device-status-events" // Topic for device status events
+	deviceStatusOutputTopic  = "device-status-events" // Topic for device status events
 	timeoutShort       = 5 * time.Second         // Short timeout for basic operations
 	timeoutMedium      = 10 * time.Second        // Medium timeout for processing
 )
@@ -55,7 +55,7 @@ func (s *SplitterTestSuite) SetupTest() {
 	s.Require().NoError(err, "Failed to start splitter service")
 
 	// Create necessary topics for testing
-	s.createTopics(inputTopic, defaultOutputTopic, deviceStatusTopic)
+	s.createTopics(inputTopic, defaultOutputTopic, deviceStatusOutputTopic)
 
 	// Give the service time to start consuming
 	time.Sleep(2 * time.Second)
@@ -122,7 +122,7 @@ func (s *SplitterTestSuite) TestMultipleOutputTopics() {
 	records := consumeMessages(s.T(), s.broker.Address, defaultOutputTopic, timeoutShort)
 	s.Require().Len(records, 1, "Should have routed exactly one message")
 
-	records = consumeMessages(s.T(), s.broker.Address, deviceStatusTopic, timeoutShort)
+	records = consumeMessages(s.T(), s.broker.Address, deviceStatusOutputTopic, timeoutShort)
 	s.Require().Len(records, 1, "Should have routed exactly one message")
 
 	// Verify the routed message content
