@@ -34,12 +34,13 @@ const (
 )
 
 const (
-	DefaultMissingPartitionKeyAction = IncludeInBucket
+	DefaultMissingPartitionKeyAction             = IncludeInBucket
+	DropMissingPartitionKeyActionName            = "drop"
+	IncludeInBucketMissingPartitionKeyActionName = "include"
 )
 
 const (
-	DropMissingPartitionKeyActionName            = "drop"
-	IncludeInBucketMissingPartitionKeyActionName = "include"
+	DeviceIdMetadataKeyName = "hw-deviceid"
 )
 
 var (
@@ -167,34 +168,16 @@ func (r *Buckets) getPartitionKey(msg *wrp.Message) (string, error) {
 }
 
 func parseDeviceId(msg *wrp.Message) (string, error) {
-	// Try Source first
-	deviceID, err := wrp.ParseDeviceID(msg.Source)
-	if err != nil {
-		// If Source fails, try Destination using ParseLocator
-		locator, err := wrp.ParseLocator(msg.Destination)
-		if err != nil {
-			return "", fmt.Errorf("invalid device ID in both WRP Source `%s` and WRP Destination `%s`: %w", msg.Source, msg.Destination, err)
-		}
-
-		// For event locators, check if there's a device ID in the ignored/path portion
-		if locator.Scheme == "event" && locator.Ignored != "" {
-			// Try to parse the ignored portion as it may contain a device ID
-			// Format: event:device-status/mac:112233445566/online
-			// The ignored portion would be: /mac:112233445566/online
-			deviceID, err := wrp.ParseDeviceID(locator.Ignored[1:]) // Skip leading '/'
-			if err == nil {
-				return string(deviceID), nil
-			}
-		}
-
-		// Otherwise use the locator's ID (authority)
-		if locator.ID != "" {
-			return string(locator.ID), nil
-		}
-
-		return "", fmt.Errorf("no device ID found in WRP Source `%s` or Destination `%s`: %w", msg.Source, msg.Destination, ErrNoPartitionKey)
+	var deviceId string
+	if msg.Metadata != nil {
+		deviceId = msg.Metadata[DeviceIdMetadataKeyName]
 	}
-	return string(deviceID), nil
+
+	if deviceId == "" {
+		return "", fmt.Errorf("no device ID found in WRP Metadata %v", msg.Metadata)
+	}
+
+	return string(deviceId), nil
 }
 
 func getPartitionKeyType(partitionKey string) (KeyType, error) {

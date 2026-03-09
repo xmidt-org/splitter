@@ -112,10 +112,16 @@ func (h *WRPMessageHandler) HandleMessage(ctx context.Context, record *kgo.Recor
 
 	inTargetBucket, err := h.buckets.IsInTargetBucket(&msg)
 	if err != nil {
-		h.emitLog(log.LevelError, "failed to determine target bucket", map[string]any{
+		h.emitLog(log.LevelError, "failed to parse bucket key", map[string]any{
 			"error": err.Error(),
 		})
-		// add a metric here for NoBucketKeyFound
+		h.metricEmitter.Notify(metrics.Event{
+			Name: metrics.BucketKeyErrorCount,
+			Labels: []string{
+				metrics.ErrorTypeLabel, "notfound",
+			},
+			Value: 1,
+		})
 	}
 
 	if !inTargetBucket {

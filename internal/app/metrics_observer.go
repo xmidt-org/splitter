@@ -17,6 +17,7 @@ type MetricsIn struct {
 	ConsumerFetchErrors  kit.Counter `name:"fetch_errors"`
 	ConsumerCommitErrors kit.Counter `name:"commit_errors"`
 	ConsumerPauses       kit.Gauge   `name:"fetch_pauses"`
+	BucketKeyErrorCount  kit.Counter `name:"bucket_key_error_count"`
 }
 
 type metricsObserverIn struct {
@@ -36,6 +37,7 @@ var MetricObserversModule = fx.Module("metrics_observers",
 				ConsumerFetchErrors:  in.ConsumerFetchErrors,
 				ConsumerCommitErrors: in.ConsumerCommitErrors,
 				ConsumerPauses:       in.ConsumerPauses,
+				BucketKeyErrorCount:  in.BucketKeyErrorCount,
 			}
 		}),
 	fx.Provide(

@@ -13,6 +13,7 @@ type Metrics struct {
 	ConsumerFetchErrors  kit.Counter
 	ConsumerCommitErrors kit.Counter
 	ConsumerPauses       kit.Gauge
+	BucketKeyErrorCount  kit.Counter
 }
 
 type Metric struct {
@@ -39,6 +40,7 @@ func createObservers(m Metrics) []*Observer {
 		NewObserver(ConsumerFetchErrors, COUNTER, Metric{counter: m.ConsumerFetchErrors}),
 		NewObserver(ConsumerCommitErrors, COUNTER, Metric{counter: m.ConsumerCommitErrors}),
 		NewObserver(ConsumerPauses, GAUGE, Metric{gauge: m.ConsumerPauses}),
+		NewObserver(BucketKeyErrorCount, COUNTER, Metric{counter: m.BucketKeyErrorCount}),
 	}
 	return observers
 }
