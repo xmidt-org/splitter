@@ -136,15 +136,9 @@ func (p *KafkaPublisher) Start() error {
 
 	})
 
-	// Set up buffer utilization gauge (only if MaxBufferedRecords is configured)
+	// Set up buffer utilization function for automatic Prometheus scraping
 	if p.config.maxBufferedRecords > 0 {
-		p.metricEmitter.Notify(metrics.Event{
-			Name:  metrics.KafkaBufferUtilization,
-			Value: 0, // Initial value
-			Labels: []string{
-				metrics.TopicLabel, "all",
-			},
-		})
+		metrics.BufferUtilization = p.wrpPublisher.BufferedRecords
 	}
 
 	// Start the wrpkafka publisher
@@ -168,6 +162,11 @@ func (p *KafkaPublisher) Stop(ctx context.Context) error {
 
 	if !p.started {
 		return nil
+	}
+
+	// Clear the buffer utilization function
+	if p.config.maxBufferedRecords > 0 {
+		metrics.BufferUtilization = nil
 	}
 
 	p.wrpPublisher.Stop(ctx)
@@ -211,14 +210,6 @@ func (p *KafkaPublisher) Produce(ctx context.Context, msg *wrp.Message) (wrpkafk
 		}))
 		return outcome, fmt.Errorf("failed to produce message: %w", err)
 	}
-
-	p.metricEmitter.Notify(metrics.Event{
-		Name:  metrics.PublisherOutcomes,
-		Value: 1,
-		Labels: []string{
-			metrics.OutcomeLabel, outcome.String(),
-		},
-	})
 
 	p.logEmitter.Notify(log.NewEvent(log.LevelDebug, "WRP message produced successfully", map[string]any{
 		"message_type": msg.Type.String(),

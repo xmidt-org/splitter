@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/xmidt-org/touchstone"
 	"github.com/xmidt-org/touchstone/touchkit"
 	"go.uber.org/fx"
 )
@@ -16,9 +17,10 @@ import (
 type metricType int
 
 const (
-	COUNTER   metricType = 1
-	GAUGE     metricType = 2
-	HISTOGRAM metricType = 3
+	COUNTER    metricType = 1
+	GAUGE      metricType = 2
+	HISTOGRAM  metricType = 3
+	GAUGE_FUNC metricType = 4
 )
 
 type metricDefinition struct {
@@ -106,11 +108,31 @@ var fxMetrics = []metricDefinition{
 		Buckets: "0.005,0.01,0.025,0.05,0.1,0.25,0.5,1,2.5,5,10",
 	},
 	{
-		Type:   GAUGE,
+		Type:   GAUGE_FUNC,
 		Name:   KafkaBufferUtilization,
 		Help:   "Percentage of Kafka producer buffer utilization",
 		Labels: TopicLabel,
 	},
+}
+
+// BufferUtilizationFunc is a function type that returns the current and max buffer utilization values
+// This matches the signature of wrpkafka.Publisher.BufferedRecords()
+type BufferUtilizationFunc func() (currentRecords, maxRecords int, currentBytes, maxBytes int64)
+
+// BufferUtilizationFunc is a global function that can be set by the publisher during start
+var BufferUtilization BufferUtilizationFunc
+
+// getKafkaBufferUtilization calculates the buffer utilization ratio (0.0-1.0)
+// Called automatically by Prometheus on each scrape
+func getKafkaBufferUtilization() float64 {
+	if BufferUtilization == nil {
+		return 0.0
+	}
+	current, max, _, _ := BufferUtilization()
+	if max == 0 {
+		return 0.0
+	}
+	return float64(current) / float64(max)
 }
 
 func Provide() fx.Option {
@@ -140,6 +162,21 @@ func Provide() fx.Option {
 					Help: m.Help,
 				},
 				labels...)
+
+		case GAUGE_FUNC:
+			// Create a GaugeFunc that calls getKafkaBufferUtilization
+			opt = fx.Provide(fx.Annotated{
+				Name: m.Name,
+				Target: func(f *touchstone.Factory) (prometheus.GaugeFunc, error) {
+					return f.NewGaugeFunc(
+						prometheus.GaugeOpts{
+							Name: m.Name,
+							Help: m.Help,
+						},
+						getKafkaBufferUtilization,
+					)
+				},
+			})
 
 		case HISTOGRAM:
 			buckets := strings.Split(m.Buckets, ",")
