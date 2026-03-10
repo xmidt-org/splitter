@@ -36,7 +36,7 @@ const (
 	ConsumerFetchErrors    = "fetch_errors"
 	ConsumerCommitErrors   = "commit_errors"
 	ConsumerPauses         = "fetch_pauses"
-	BucketKeyErrorCount  = "bucket_key_error_count"
+	BucketKeyErrorCount    = "bucket_key_error_count"
 	PublisherOutcomes      = "publish_outcomes"
 	PublisherErrorsCounter = "publish_errors_total"
 
@@ -48,7 +48,7 @@ const (
 
 // labels
 const (
-	ErrorTypeLabel = "error_type"
+	ErrorTypeLabel          = "error_type"
 	TopicLabel              = "topic"
 	PartitionLabel          = "partition"
 	GroupLabel              = "group"

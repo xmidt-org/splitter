@@ -444,7 +444,7 @@ func (suite *PublisherTestSuite) TestEventEmission() {
 				errorMetric := metricEvents[0]
 				suite.Equal("publish_errors_total", errorMetric.Name)
 				suite.Equal(float64(1), errorMetric.Value)
-				suite.Contains(errorMetric.Labels, "type")
+				suite.Contains(errorMetric.Labels, "error_type")
 				suite.Contains(errorMetric.Labels, "not_started")
 			}
 		})

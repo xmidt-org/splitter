@@ -10,9 +10,9 @@ import (
 )
 
 type Metrics struct {
-	ConsumerFetchErrors    kit.Counter
-	ConsumerCommitErrors   kit.Counter
-	ConsumerPauses         kit.Gauge
+	ConsumerFetchErrors  kit.Counter
+	ConsumerCommitErrors kit.Counter
+	ConsumerPauses       kit.Gauge
 	BucketKeyErrorCount  kit.Counter
 
 	PublisherOutcomes      kit.Counter

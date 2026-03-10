@@ -17,7 +17,6 @@ var (
 )
 
 const (
-	// DefaultHashKey is the default key for hardware device ID.
 	DefaultMetadataKeyField = "hw-deviceid"
 )
 
@@ -37,7 +36,7 @@ const (
 
 // ParseHashKeyType converts a string to a HashKeyType.
 // The comparison is case-insensitive.
-// Defaults to deviceId
+// Defaults to metadata/hw-deviceid
 func ParseHashKeyType(s string) (HashKeyType, string, error) {
 	if s == "" {
 		return HashKeyMetadata, DefaultMetadataKeyField, nil
