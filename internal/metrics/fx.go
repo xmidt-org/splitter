@@ -36,6 +36,7 @@ const (
 	ConsumerFetchErrors    = "fetch_errors"
 	ConsumerCommitErrors   = "commit_errors"
 	ConsumerPauses         = "fetch_pauses"
+	BucketKeyErrorCount    = "bucket_key_error_count"
 	PublisherOutcomes      = "publish_outcomes"
 	PublisherErrorsCounter = "publish_errors_total"
 
@@ -47,7 +48,7 @@ const (
 
 // labels
 const (
-	ErrorTypeLabel          = "type"
+	ErrorTypeLabel          = "error_type"
 	TopicLabel              = "topic"
 	PartitionLabel          = "partition"
 	GroupLabel              = "group"
@@ -81,6 +82,12 @@ var fxMetrics = []metricDefinition{
 		Name:   ConsumerPauses,
 		Help:   "Current pause state (1=paused, 0=running)",
 		Labels: fmt.Sprintf("%s,%s", GroupLabel, ClientIdLabel),
+	},
+	{
+		Type:   COUNTER,
+		Name:   BucketKeyErrorCount,
+		Help:   "Total count of bucket key errors",
+		Labels: ErrorTypeLabel,
 	},
 	{
 		Type:   COUNTER,

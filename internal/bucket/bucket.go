@@ -16,16 +16,6 @@ import (
 // A splitter will only be configured to write to one "bucket".  Messages destined for
 // other buckets (in this case, regions) will be dropped.
 
-type KeyType int
-
-const (
-	DeviceId KeyType = iota
-)
-
-const (
-	DeviceIdKeyName = "device_id"
-)
-
 type MissingPartitionKeyAction int
 
 const (
@@ -34,12 +24,13 @@ const (
 )
 
 const (
-	DefaultMissingPartitionKeyAction = IncludeInBucket
+	DefaultMissingPartitionKeyAction             = IncludeInBucket
+	DropMissingPartitionKeyActionName            = "drop"
+	IncludeInBucketMissingPartitionKeyActionName = "include"
 )
 
 const (
-	DropMissingPartitionKeyActionName            = "drop"
-	IncludeInBucketMissingPartitionKeyActionName = "include"
+	DeviceIdMetadataKeyName = "hw-deviceid"
 )
 
 var (
@@ -70,7 +61,8 @@ type Buckets struct {
 	targetBucketIndex         int
 	partitioner               Partitioner
 	missingPartitionKeyAction MissingPartitionKeyAction
-	partitionKeyType          KeyType
+	partitionKeyType          HashKeyType
+	metatadataKeyField        string
 	buckets                   []BucketSettings
 	thresholds                []float32
 }
@@ -102,7 +94,7 @@ func NewBuckets(config Config) (Bucket, error) {
 	}
 
 	// set the bucket key type
-	partitionKeyType, err := getPartitionKeyType(config.PartitionKeyType)
+	partitionKeyType, metadataKeyField, err := ParseHashKeyType(config.PartitionKeyType)
 	if err != nil {
 		return &Buckets{}, err
 	}
@@ -122,6 +114,7 @@ func NewBuckets(config Config) (Bucket, error) {
 		buckets:                   config.PossibleBuckets,
 		thresholds:                thresholds,
 		partitionKeyType:          partitionKeyType,
+		metatadataKeyField:        metadataKeyField,
 		missingPartitionKeyAction: missingPartitionKeyAction}, nil
 }
 
@@ -158,53 +151,14 @@ func (r *Buckets) IsInTargetBucket(msg *wrp.Message) (bool, error) {
 }
 
 func (r *Buckets) getPartitionKey(msg *wrp.Message) (string, error) {
-	switch r.partitionKeyType {
-	case DeviceId:
-		return parseDeviceId(msg)
-	default:
-		return "", fmt.Errorf("invalid partition key type")
-	}
-}
-
-func parseDeviceId(msg *wrp.Message) (string, error) {
-	// Try Source first
-	deviceID, err := wrp.ParseDeviceID(msg.Source)
-	if err != nil {
-		// If Source fails, try Destination using ParseLocator
-		locator, err := wrp.ParseLocator(msg.Destination)
-		if err != nil {
-			return "", fmt.Errorf("invalid device ID in both WRP Source `%s` and WRP Destination `%s`: %w", msg.Source, msg.Destination, err)
-		}
-
-		// For event locators, check if there's a device ID in the ignored/path portion
-		if locator.Scheme == "event" && locator.Ignored != "" {
-			// Try to parse the ignored portion as it may contain a device ID
-			// Format: event:device-status/mac:112233445566/online
-			// The ignored portion would be: /mac:112233445566/online
-			deviceID, err := wrp.ParseDeviceID(locator.Ignored[1:]) // Skip leading '/'
-			if err == nil {
-				return string(deviceID), nil
-			}
-		}
-
-		// Otherwise use the locator's ID (authority)
-		if locator.ID != "" {
-			return string(locator.ID), nil
-		}
-
-		return "", fmt.Errorf("no device ID found in WRP Source `%s` or Destination `%s`: %w", msg.Source, msg.Destination, ErrNoPartitionKey)
-	}
-	return string(deviceID), nil
-}
-
-func getPartitionKeyType(partitionKey string) (KeyType, error) {
-	if partitionKey == DeviceIdKeyName {
-		return DeviceId, nil
-	}
-	return -1, fmt.Errorf("invalid bucket hash key %s", partitionKey)
+	return GetHashKey(msg, r.partitionKeyType, r.metatadataKeyField)
 }
 
 func getMissingPartitionKeyAction(action string) (MissingPartitionKeyAction, error) {
+	if action == "" {
+		return DefaultMissingPartitionKeyAction, nil
+	}
+
 	switch action {
 	case DropMissingPartitionKeyActionName:
 		return Drop, nil

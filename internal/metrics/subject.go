@@ -10,9 +10,11 @@ import (
 )
 
 type Metrics struct {
-	ConsumerFetchErrors    kit.Counter
-	ConsumerCommitErrors   kit.Counter
-	ConsumerPauses         kit.Gauge
+	ConsumerFetchErrors  kit.Counter
+	ConsumerCommitErrors kit.Counter
+	ConsumerPauses       kit.Gauge
+	BucketKeyErrorCount  kit.Counter
+
 	PublisherOutcomes      kit.Counter
 	PublisherErrorsCounter kit.Counter
 
@@ -46,6 +48,7 @@ func createObservers(m Metrics) []*Observer {
 		NewObserver(ConsumerFetchErrors, COUNTER, Metric{counter: m.ConsumerFetchErrors}),
 		NewObserver(ConsumerCommitErrors, COUNTER, Metric{counter: m.ConsumerCommitErrors}),
 		NewObserver(ConsumerPauses, GAUGE, Metric{gauge: m.ConsumerPauses}),
+		NewObserver(BucketKeyErrorCount, COUNTER, Metric{counter: m.BucketKeyErrorCount}),
 		NewObserver(PublisherOutcomes, COUNTER, Metric{counter: m.PublisherOutcomes}),
 		NewObserver(PublisherErrorsCounter, COUNTER, Metric{counter: m.PublisherErrorsCounter}),
 		NewObserver(KafkaPublished, COUNTER, Metric{counter: m.KafkaPublished}),
