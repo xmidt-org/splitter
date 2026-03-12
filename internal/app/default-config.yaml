@@ -51,12 +51,18 @@ buckets:
   missing_partition_key_action: "include" # "include" (default), "drop"
 
 producer:
-  brokers:
-    - "localhost:9092"
   topic_routes:
     - pattern: "*"
       topic: "default-events"
-
+  brokers:
+    restart_on_config_change: false
+    target_region: us-east-1
+    regions:
+      us-east-1:
+        - "localhost:9092"
+      us-west-2:
+        - "localhost:9092"
+      
 # Kafka Consumer Configuration
 consumer:
   # Required: List of Kafka broker addresses

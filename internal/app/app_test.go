@@ -308,7 +308,13 @@ func TestProvidePublisher(t *testing.T) {
 
 				return PublisherIn{
 					Config: publisher.Config{
-						Brokers: []string{"localhost:9092"},
+						Brokers: publisher.Brokers{
+							RestartOnConfigChange: false,
+							TargetRegion:          "us-east-1",
+							Regions: map[string][]string{
+								"us-east-1": {"localhost:9092"},
+							},
+						},
 						TopicRoutes: []publisher.TopicRoute{
 							{
 								Topic:   "wrp-events",
@@ -337,7 +343,13 @@ func TestProvidePublisher(t *testing.T) {
 
 				return PublisherIn{
 					Config: publisher.Config{
-						Brokers: []string{}, // Empty brokers should cause validation error
+						Brokers: publisher.Brokers{
+							RestartOnConfigChange: false,
+							TargetRegion:          "nonexistent-region",
+							Regions: map[string][]string{
+								"us-east-1": {"localhost:9092"},
+							},
+						}, // Target region not in regions map should cause validation error
 						TopicRoutes: []publisher.TopicRoute{
 							{
 								Topic:   "wrp-events",
@@ -382,7 +394,13 @@ func TestProvideConsumer(t *testing.T) {
 		metricEmitter := observe.NewSubject[metrics.Event]()
 
 		pubConfig := publisher.Config{
-			Brokers: []string{"localhost:9092"},
+			Brokers: publisher.Brokers{
+				RestartOnConfigChange: false,
+				TargetRegion:          "us-east-1",
+				Regions: map[string][]string{
+					"us-east-1": {"localhost:9092"},
+				},
+			},
 			TopicRoutes: []publisher.TopicRoute{
 				{
 					Topic:   "wrp-events",
@@ -394,7 +412,7 @@ func TestProvideConsumer(t *testing.T) {
 		pub, err := publisher.New(
 			publisher.WithLogEmitter(logEmitter),
 			publisher.WithMetricsEmitter(metricEmitter),
-			publisher.WithBrokers(pubConfig.Brokers...),
+			publisher.WithBrokers(pubConfig.Brokers),
 			publisher.WithTopicRoutes(pubConfig.ToWRPKafkaRoutes()...),
 		)
 		require.NoError(t, err, "Setup should create publisher successfully")

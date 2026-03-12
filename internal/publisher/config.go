@@ -13,7 +13,7 @@ import (
 // It can be unmarshaled via goschtalt and converted to functional options.
 type Config struct {
 	// Required fields
-	Brokers []string
+	Brokers Brokers
 
 	// Topic routes for WRP message routing
 	TopicRoutes []TopicRoute
@@ -31,6 +31,12 @@ type Config struct {
 
 	// TLS configuration
 	TLS *TLSConfig
+}
+
+type Brokers struct {
+	RestartOnConfigChange bool
+	TargetRegion          string
+	Regions               map[string][]string
 }
 
 // TopicRoute represents a WRP message routing configuration

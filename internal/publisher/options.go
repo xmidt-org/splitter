@@ -43,7 +43,7 @@ func (f optionFunc) apply(p *KafkaPublisher) error {
 // publisherConfig holds the configuration for a Publisher.
 type publisherConfig struct {
 	// Required options
-	brokers     []string
+	brokers     Brokers
 	topicRoutes []wrpkafka.TopicRoute
 
 	// Optional publisher config fields (applied directly to wrpkafka.Publisher)
@@ -61,17 +61,31 @@ type publisherConfig struct {
 
 // validate ensures all required configuration is present.
 func (c *publisherConfig) validate() error {
-	if len(c.brokers) == 0 {
+	regions := c.brokers.Regions
+	if len(regions) == 0 {
 		return ErrMissingBrokers
+	}
+	// Check if target_region exists in the regions map
+	if _, exists := regions[c.brokers.TargetRegion]; !exists {
+		return fmt.Errorf("target_region '%s' not found in regions map", c.brokers.TargetRegion)
+	}
+
+	// Check if target region has brokers configured
+	if brokers := regions[c.brokers.TargetRegion]; len(brokers) == 0 {
+		return fmt.Errorf("target_region '%s' has no brokers configured", c.brokers.TargetRegion)
 	}
 	if len(c.topicRoutes) == 0 {
 		return ErrMissingTopicRoutes
 	}
+	if c.brokers.TargetRegion == "" {
+		return fmt.Errorf("target_region cannot be empty")
+	}
+
 	return nil
 }
 
 // WithBrokers sets the Kafka broker addresses.
-func WithBrokers(brokers ...string) Option {
+func WithBrokers(brokers Brokers) Option {
 	return optionFunc(func(p *KafkaPublisher) error {
 		p.config.brokers = brokers
 		return nil

@@ -68,7 +68,7 @@ func New(opts ...Option) (*KafkaPublisher, error) {
 
 	// Create the underlying wrpkafka publisher
 	wrpPublisher := &wrpkafka.Publisher{
-		Brokers: publisher.config.brokers,
+		Brokers: publisher.config.brokers.Regions[publisher.config.brokers.TargetRegion],
 		InitialDynamicConfig: wrpkafka.DynamicConfig{
 			TopicMap: publisher.config.topicRoutes,
 		},
