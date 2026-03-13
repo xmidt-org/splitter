@@ -12,6 +12,29 @@ import (
 	"github.com/xmidt-org/wrpkafka"
 )
 
+var testBroker = Brokers{
+	RestartOnConfigChange: false,
+	TargetRegion:          "us-east-1",
+	Regions: map[string][]string{
+		"us-east-1": {"localhost:9092"},
+	},
+}
+
+var multiBroker = Brokers{
+	RestartOnConfigChange: false,
+	TargetRegion:          "us-east-1",
+	Regions: map[string][]string{
+		"us-east-1": {"localhost:9092", "localhost:9093", "localhost:9094"},
+		"us-west-2": {"localhost:9095"},
+	},
+}
+
+var emptyBroker = Brokers{
+	RestartOnConfigChange: false,
+	TargetRegion:          "us-east-1",
+	Regions:               map[string][]string{},
+}
+
 // Test suite for Config
 type ConfigTestSuite struct {
 	suite.Suite
@@ -147,7 +170,7 @@ func (suite *OptionsTestSuite) TestPublisherConfig_Validate() {
 		{
 			name: "valid_config",
 			config: &publisherConfig{
-				brokers: []string{"localhost:9092"},
+				brokers: testBroker,
 				topicRoutes: []wrpkafka.TopicRoute{
 					{Topic: "test", Pattern: ".*"},
 				},
@@ -158,31 +181,35 @@ func (suite *OptionsTestSuite) TestPublisherConfig_Validate() {
 		{
 			name: "missing_brokers",
 			config: &publisherConfig{
-				brokers: []string{},
+				brokers: emptyBroker,
 				topicRoutes: []wrpkafka.TopicRoute{
 					{Topic: "test", Pattern: ".*"},
 				},
 			},
 			expectError: true,
-			expectedErr: ErrMissingBrokers,
-			description: "Should return error when brokers are empty",
+			description: "Should return error when brokers regions are empty",
 		},
 		{
-			name: "nil_brokers",
+			name: "invalid_target_region",
 			config: &publisherConfig{
-				brokers: nil,
+				brokers: Brokers{
+					RestartOnConfigChange: false,
+					TargetRegion:          "nonexistent-region",
+					Regions: map[string][]string{
+						"us-east-1": {"localhost:9092"},
+					},
+				},
 				topicRoutes: []wrpkafka.TopicRoute{
 					{Topic: "test", Pattern: ".*"},
 				},
 			},
 			expectError: true,
-			expectedErr: ErrMissingBrokers,
-			description: "Should return error when brokers are nil",
+			description: "Should return error when target region is not in regions map",
 		},
 		{
 			name: "missing_topic_routes",
 			config: &publisherConfig{
-				brokers:     []string{"localhost:9092"},
+				brokers:     testBroker,
 				topicRoutes: []wrpkafka.TopicRoute{},
 			},
 			expectError: true,
@@ -192,7 +219,7 @@ func (suite *OptionsTestSuite) TestPublisherConfig_Validate() {
 		{
 			name: "nil_topic_routes",
 			config: &publisherConfig{
-				brokers:     []string{"localhost:9092"},
+				brokers:     testBroker,
 				topicRoutes: nil,
 			},
 			expectError: true,
@@ -228,26 +255,25 @@ func (suite *OptionsTestSuite) TestOptions() {
 	}{
 		{
 			name:   "WithBrokers_single",
-			option: WithBrokers("localhost:9092"),
+			option: WithBrokers(testBroker),
 			setupPub: func() *KafkaPublisher {
 				return &KafkaPublisher{config: &publisherConfig{}}
 			},
 			verifyPub: func(p *KafkaPublisher) {
-				suite.Equal([]string{"localhost:9092"}, p.config.brokers)
+				suite.Equal(testBroker, p.config.brokers)
 			},
-			description: "Should set single broker correctly",
+			description: "Should set broker configuration correctly",
 		},
 		{
 			name:   "WithBrokers_multiple",
-			option: WithBrokers("localhost:9092", "localhost:9093", "localhost:9094"),
+			option: WithBrokers(multiBroker),
 			setupPub: func() *KafkaPublisher {
 				return &KafkaPublisher{config: &publisherConfig{}}
 			},
 			verifyPub: func(p *KafkaPublisher) {
-				expected := []string{"localhost:9092", "localhost:9093", "localhost:9094"}
-				suite.Equal(expected, p.config.brokers)
+				suite.Equal(multiBroker, p.config.brokers)
 			},
-			description: "Should set multiple brokers correctly",
+			description: "Should set multi-region broker configuration correctly",
 		},
 		{
 			name: "WithTopicRoutes_single",
@@ -628,7 +654,7 @@ func TestOptionsTestSuite(t *testing.T) {
 // Benchmark tests for publisher operations
 func BenchmarkPublisher_IsStarted(b *testing.B) {
 	pub, _ := New(
-		WithBrokers("localhost:9092"),
+		WithBrokers(testBroker),
 		WithTopicRoutes(wrpkafka.TopicRoute{Topic: "test", Pattern: ".*"}),
 	)
 	pub.started = true

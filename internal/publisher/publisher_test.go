@@ -97,7 +97,7 @@ func (suite *PublisherTestSuite) TestNew() {
 		{
 			name: "missing_topic_routes",
 			options: []Option{
-				WithBrokers("localhost:9092"),
+				WithBrokers(testBroker),
 			},
 			expectError: true,
 			errorType:   ErrMissingTopicRoutes,
@@ -106,7 +106,7 @@ func (suite *PublisherTestSuite) TestNew() {
 		{
 			name: "minimal_valid_config",
 			options: []Option{
-				WithBrokers("localhost:9092"),
+				WithBrokers(testBroker),
 				WithTopicRoutes(wrpkafka.TopicRoute{
 					Topic:   "test-topic",
 					Pattern: ".*",
@@ -118,7 +118,7 @@ func (suite *PublisherTestSuite) TestNew() {
 		{
 			name: "complete_config",
 			options: []Option{
-				WithBrokers("localhost:9092", "localhost:9093"),
+				WithBrokers(multiBroker),
 				WithTopicRoutes(
 					wrpkafka.TopicRoute{Topic: "events", Pattern: "event:.*"},
 					wrpkafka.TopicRoute{Topic: "requests", Pattern: "mac:.*"},
@@ -139,7 +139,7 @@ func (suite *PublisherTestSuite) TestNew() {
 		{
 			name: "with_sasl_plain",
 			options: []Option{
-				WithBrokers("localhost:9092"),
+				WithBrokers(testBroker),
 				WithTopicRoutes(wrpkafka.TopicRoute{Topic: "test", Pattern: ".*"}),
 				WithSASLPlain("user", "pass"),
 			},
@@ -149,7 +149,7 @@ func (suite *PublisherTestSuite) TestNew() {
 		{
 			name: "with_sasl_scram256",
 			options: []Option{
-				WithBrokers("localhost:9092"),
+				WithBrokers(testBroker),
 				WithTopicRoutes(wrpkafka.TopicRoute{Topic: "test", Pattern: ".*"}),
 				WithSASLScram256("user", "pass"),
 			},
@@ -159,7 +159,7 @@ func (suite *PublisherTestSuite) TestNew() {
 		{
 			name: "with_sasl_scram512",
 			options: []Option{
-				WithBrokers("localhost:9092"),
+				WithBrokers(testBroker),
 				WithTopicRoutes(wrpkafka.TopicRoute{Topic: "test", Pattern: ".*"}),
 				WithSASLScram512("user", "pass"),
 			},
@@ -169,7 +169,7 @@ func (suite *PublisherTestSuite) TestNew() {
 		{
 			name: "with_tls",
 			options: []Option{
-				WithBrokers("localhost:9092"),
+				WithBrokers(testBroker),
 				WithTopicRoutes(wrpkafka.TopicRoute{Topic: "test", Pattern: ".*"}),
 				WithTLS(),
 			},
@@ -179,7 +179,7 @@ func (suite *PublisherTestSuite) TestNew() {
 		{
 			name: "with_custom_tls_config",
 			options: []Option{
-				WithBrokers("localhost:9092"),
+				WithBrokers(testBroker),
 				WithTopicRoutes(wrpkafka.TopicRoute{Topic: "test", Pattern: ".*"}),
 				WithTLSConfig(&TLSConfig{
 					Enabled:            true,
@@ -238,7 +238,7 @@ func (suite *PublisherTestSuite) TestIsStarted() {
 	for _, tt := range tests {
 		suite.Run(tt.name, func() {
 			publisher, _ := New(
-				WithBrokers("localhost:9092"),
+				WithBrokers(testBroker),
 				WithTopicRoutes(wrpkafka.TopicRoute{Topic: "test", Pattern: ".*"}),
 			)
 			publisher.started = tt.started
@@ -253,7 +253,7 @@ func (suite *PublisherTestSuite) TestIsStarted() {
 // Test error handling for not started publisher
 func (suite *PublisherTestSuite) TestProduceWhenNotStarted() {
 	publisher, err := New(
-		WithBrokers("localhost:9092"),
+		WithBrokers(testBroker),
 		WithTopicRoutes(wrpkafka.TopicRoute{Topic: "test", Pattern: ".*"}),
 		WithMetricsEmitter(suite.metricEmitter),
 	)
@@ -275,7 +275,7 @@ func (suite *PublisherTestSuite) TestProduceWhenNotStarted() {
 // Test concurrent access to IsStarted
 func (suite *PublisherTestSuite) TestConcurrentIsStarted() {
 	publisher, err := New(
-		WithBrokers("localhost:9092"),
+		WithBrokers(testBroker),
 		WithTopicRoutes(wrpkafka.TopicRoute{Topic: "test", Pattern: ".*"}),
 	)
 	suite.NoError(err)
@@ -312,7 +312,7 @@ func (suite *PublisherTestSuite) TestStart() {
 			name: "start_already_started_publisher",
 			setupPublisher: func() *KafkaPublisher {
 				p, _ := New(
-					WithBrokers("localhost:9092"),
+					WithBrokers(testBroker),
 					WithTopicRoutes(wrpkafka.TopicRoute{Topic: "test", Pattern: ".*"}),
 					WithLogEmitter(suite.logEmitter),
 				)
@@ -355,7 +355,7 @@ func (suite *PublisherTestSuite) TestStop() {
 			name: "stop_not_started_publisher",
 			setupPublisher: func() *KafkaPublisher {
 				p, _ := New(
-					WithBrokers("localhost:9092"),
+					WithBrokers(testBroker),
 					WithTopicRoutes(wrpkafka.TopicRoute{Topic: "test", Pattern: ".*"}),
 					WithLogEmitter(suite.logEmitter),
 				)
@@ -367,7 +367,7 @@ func (suite *PublisherTestSuite) TestStop() {
 			name: "stop_started_publisher",
 			setupPublisher: func() *KafkaPublisher {
 				p, _ := New(
-					WithBrokers("localhost:9092"),
+					WithBrokers(testBroker),
 					WithTopicRoutes(wrpkafka.TopicRoute{Topic: "test", Pattern: ".*"}),
 					WithLogEmitter(suite.logEmitter),
 				)
@@ -422,7 +422,7 @@ func (suite *PublisherTestSuite) TestEventEmission() {
 			suite.clearEvents()
 
 			publisher, _ := New(
-				WithBrokers("localhost:9092"),
+				WithBrokers(testBroker),
 				WithTopicRoutes(wrpkafka.TopicRoute{Topic: "test", Pattern: ".*"}),
 				WithLogEmitter(suite.logEmitter),
 				WithMetricsEmitter(suite.metricEmitter),
@@ -526,7 +526,7 @@ func (suite *PublisherTestSuite) TestProduceMessageTypes() {
 			suite.clearEvents()
 
 			publisher, err := New(
-				WithBrokers("localhost:9092"),
+				WithBrokers(testBroker),
 				WithTopicRoutes(wrpkafka.TopicRoute{Topic: "test", Pattern: ".*"}),
 				WithMetricsEmitter(suite.metricEmitter),
 			)
@@ -560,7 +560,7 @@ func (suite *PublisherTestSuite) TestEdgeCases() {
 			name: "produce_with_nil_message",
 			setupTest: func() (*KafkaPublisher, *wrp.Message, context.Context) {
 				p, _ := New(
-					WithBrokers("localhost:9092"),
+					WithBrokers(testBroker),
 					WithTopicRoutes(wrpkafka.TopicRoute{Topic: "test", Pattern: ".*"}),
 				)
 				return p, nil, context.Background()
@@ -572,7 +572,7 @@ func (suite *PublisherTestSuite) TestEdgeCases() {
 			name: "produce_with_canceled_context",
 			setupTest: func() (*KafkaPublisher, *wrp.Message, context.Context) {
 				p, _ := New(
-					WithBrokers("localhost:9092"),
+					WithBrokers(testBroker),
 					WithTopicRoutes(wrpkafka.TopicRoute{Topic: "test", Pattern: ".*"}),
 				)
 				ctx, cancel := context.WithCancel(context.Background())
@@ -592,7 +592,7 @@ func (suite *PublisherTestSuite) TestEdgeCases() {
 			name: "produce_with_empty_message_fields",
 			setupTest: func() (*KafkaPublisher, *wrp.Message, context.Context) {
 				p, _ := New(
-					WithBrokers("localhost:9092"),
+					WithBrokers(testBroker),
 					WithTopicRoutes(wrpkafka.TopicRoute{Topic: "test", Pattern: ".*"}),
 				)
 
@@ -632,7 +632,7 @@ func (suite *PublisherTestSuite) TestEdgeCases() {
 // Test concurrent Start/Stop operations
 func (suite *PublisherTestSuite) TestConcurrentStartStop() {
 	publisher, err := New(
-		WithBrokers("localhost:9092"),
+		WithBrokers(testBroker),
 		WithTopicRoutes(wrpkafka.TopicRoute{Topic: "test", Pattern: ".*"}),
 		WithLogEmitter(suite.logEmitter),
 	)
@@ -691,17 +691,21 @@ func (suite *PublisherTestSuite) TestPublisherValidation() {
 		{
 			name: "empty_broker_list",
 			options: []Option{
-				WithBrokers(), // Empty brokers
+				WithBrokers(Brokers{
+					RestartOnConfigChange: false,
+					TargetRegion:          "us-east-1",
+					Regions:               map[string][]string{}, // Empty regions map
+				}),
 				WithTopicRoutes(wrpkafka.TopicRoute{Topic: "test", Pattern: ".*"}),
 			},
 			expectError: true,
 			errorCheck:  func(err error) bool { return err.Error() == "brokers cannot be empty" },
-			description: "Should reject empty broker list",
+			description: "Should reject empty broker regions",
 		},
 		{
 			name: "empty_topic_routes",
 			options: []Option{
-				WithBrokers("localhost:9092"),
+				WithBrokers(testBroker),
 				WithTopicRoutes(), // Empty topic routes
 			},
 			expectError: true,
@@ -711,7 +715,7 @@ func (suite *PublisherTestSuite) TestPublisherValidation() {
 		{
 			name: "valid_minimal_config",
 			options: []Option{
-				WithBrokers("localhost:9092"),
+				WithBrokers(testBroker),
 				WithTopicRoutes(wrpkafka.TopicRoute{Topic: "test", Pattern: ".*"}),
 			},
 			expectError: false,

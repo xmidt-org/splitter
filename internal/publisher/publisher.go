@@ -68,7 +68,7 @@ func New(opts ...Option) (*KafkaPublisher, error) {
 
 	// Create the underlying wrpkafka publisher
 	wrpPublisher := &wrpkafka.Publisher{
-		Brokers: publisher.config.brokers,
+		Brokers: publisher.config.brokers.Regions[publisher.config.brokers.TargetRegion],
 		InitialDynamicConfig: wrpkafka.DynamicConfig{
 			TopicMap: publisher.config.topicRoutes,
 		},
@@ -98,6 +98,11 @@ func (p *KafkaPublisher) Start() error {
 	if p.started {
 		return ErrPublisherAlreadyStarted
 	}
+
+	// log the target broker at startup for visibility
+	p.logEmitter.Notify(log.NewEvent(log.LevelInfo, "Starting WRP publisher with configured target broker", map[string]any{
+		"brokers": p.config.brokers.TargetRegion,
+	}))
 
 	// Add event listener for all publish events (success and failure)
 	p.wrpPublisher.AddPublishEventListener(func(event *wrpkafka.PublishEvent) {
