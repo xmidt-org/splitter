@@ -161,6 +161,26 @@ func (s *HashKeyProviderSuite) TestGetHashKey_Metadata_MissingField() {
 	assert.Equal(s.T(), "", key)
 }
 
+func (s *HashKeyProviderSuite) TestGetHashKey_Metadata_RawFieldFound() {
+	msg := &wrp.Message{
+		Metadata: map[string]string{"hw-deviceid": "raw-field-value"},
+	}
+	hashKey := HashKey{Name: HashKeyMetadata, MetadataField: "hw-deviceid"}
+	key, err := hashKey.GetHashKey(msg)
+	assert.NoError(s.T(), err)
+	assert.Equal(s.T(), "raw-field-value", key)
+}
+
+func (s *HashKeyProviderSuite) TestGetHashKey_Metadata_LeadingSlashFieldFound() {
+	msg := &wrp.Message{
+		Metadata: map[string]string{"/hw-deviceid": "slash-field-value"},
+	}
+	hashKey := HashKey{Name: HashKeyMetadata, MetadataField: "hw-deviceid"}
+	key, err := hashKey.GetHashKey(msg)
+	assert.NoError(s.T(), err)
+	assert.Equal(s.T(), "slash-field-value", key)
+}
+
 func (s *HashKeyProviderSuite) TestGetHashKey_Metadata_EmptyFieldName() {
 	msg := &wrp.Message{
 		Metadata: map[string]string{"hw-deviceid": "mac:112233445566"},
