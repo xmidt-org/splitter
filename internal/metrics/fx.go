@@ -44,6 +44,7 @@ const (
 	KafkaPublished         = "kafka_messages_published_total"
 	KafkaPublishLatency    = "kafka_publish_latency_seconds"
 	KafkaBufferUtilization = "kafka_buffer_utilization_percentage"
+	Panics                 = "panics_total"
 )
 
 // labels
@@ -56,12 +57,17 @@ const (
 	ClientIdLabel           = "client"
 	TopicShardStrategyLabel = "topic_shard_strategy"
 	OutcomeLabel            = "outcome"
+	PanicTypeLabel          = "panic_type"
 )
 
 // canned values
 const (
-	OutcomeSuccess = "success"
-	OutcomeFailure = "failure"
+	OutcomeSuccess            = "success"
+	OutcomeFailure            = "failure"
+	PanicTypeMetrics          = "metrics"
+	PanicTypeConsumerPoll     = "consumer_poll"
+	PanicTypeFetchesRecord    = "fetches_record"
+	PanicTypeManageFetchState = "manage_fetch_state"
 )
 
 var fxMetrics = []metricDefinition{
@@ -121,13 +127,20 @@ var fxMetrics = []metricDefinition{
 		Labels:    TopicLabel,
 		GaugeFunc: getKafkaBufferUtilization,
 	},
+	{
+		Type: COUNTER,
+		Name: Panics,
+		Help: "Total number of panics encountered",
+
+		Labels: PanicTypeLabel,
+	},
 }
 
 // BufferUtilizationFunc is a function type that returns the current and max buffer utilization values
 // This matches the signature of wrpkafka.Publisher.BufferedRecords()
 type BufferUtilizationFunc func() (currentRecords, maxRecords int, currentBytes, maxBytes int64)
 
-// BufferUtilizationFunc is a global function that can be set by the publisher during start
+// BufferUtilization is a global function that can be set by the publisher during start
 var BufferUtilization BufferUtilizationFunc
 
 // getKafkaBufferUtilization calculates the buffer utilization ratio (0.0-1.0)
@@ -195,9 +208,10 @@ func Provide() fx.Option {
 		if opt == nil {
 			panic(fmt.Sprintf("failed to create metric '%s'", m.Name))
 		}
-
+		// GaugeFunc metrics need special handling - they're registered directly with Prometheus
+		// and don't go through the kit.Gauge interface
 		if m.GaugeFunc != nil {
-			// Create a GaugeFunc that calls the provided function
+			// This creates a prometheus.GaugeFunc which is automatically scraped
 			opt = fx.Provide(fx.Annotated{
 				Name: m.Name,
 				Target: func(f *touchstone.Factory) (prometheus.GaugeFunc, error) {

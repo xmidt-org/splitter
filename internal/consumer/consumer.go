@@ -226,6 +226,15 @@ func (c *KafkaConsumer) pollLoop() {
 			c.emitLog(log.LevelError, "PANIC in consumer poll loop - consumer stopped", map[string]any{
 				"panic": r,
 			})
+			c.metricEmitter.Notify(metrics.Event{
+				Name: metrics.Panics,
+				Labels: []string{
+					metrics.PanicTypeLabel, metrics.PanicTypeConsumerPoll,
+				},
+				Value: 1,
+			})
+
+			// Mark consumer as not running since this goroutine is terminating
 			// Mark consumer as not running since this goroutine is terminating
 			c.mu.Lock()
 			c.running = false
@@ -277,6 +286,13 @@ func (c *KafkaConsumer) pollLoop() {
 						"topic":     record.Topic,
 						"partition": record.Partition,
 						"offset":    record.Offset,
+					})
+					c.metricEmitter.Notify(metrics.Event{
+						Name: metrics.Panics,
+						Labels: []string{
+							metrics.PanicTypeLabel, metrics.PanicTypeFetchesRecord,
+						},
+						Value: 1,
 					})
 					// Don't commit this record - let it be reprocessed
 				}
@@ -373,6 +389,13 @@ func (c *KafkaConsumer) startManageFetchState() {
 		if r := recover(); r != nil {
 			c.emitLog(log.LevelError, "PANIC in fetch state manager - manager stopped", map[string]any{
 				"panic": r,
+			})
+			c.metricEmitter.Notify(metrics.Event{
+				Name: metrics.Panics,
+				Labels: []string{
+					metrics.PanicTypeLabel, metrics.PanicTypeManageFetchState,
+				},
+				Value: 1,
 			})
 		}
 	}()
