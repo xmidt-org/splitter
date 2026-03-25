@@ -96,15 +96,24 @@ func New(opts ...Option) (Consumer, error) {
 		kgo.ConsumeTopics(consumer.config.topics...),
 		kgo.AutoCommitMarks(), // commit marked offsets automatically
 		kgo.AutoCommitCallback(func(c *kgo.Client, req *kmsg.OffsetCommitRequest, resp *kmsg.OffsetCommitResponse, err error) {
-			consumer.metricEmitter.Notify(metrics.Event{
-				Name: metrics.ConsumerCommitErrors,
-				Labels: []string{
-					metrics.MemberIdLabel, req.MemberID,
-					metrics.GroupLabel, consumer.config.groupID,
-					metrics.ClientIdLabel, consumer.clientId,
-				},
-				Value: 1,
-			})
+			if err != nil {
+				memberId := "unknown"
+				if req != nil {
+					memberId = req.MemberID
+				}
+				consumer.metricEmitter.Notify(metrics.Event{
+					Name: metrics.ConsumerCommitErrors,
+					Labels: []string{
+						metrics.MemberIdLabel, memberId,
+						metrics.GroupLabel, consumer.config.groupID,
+						metrics.ClientIdLabel, consumer.clientId,
+					},
+					Value: 1,
+				})
+				consumer.emitLog(log.LevelError, "offset commit error", map[string]any{
+					"error": err,
+				})
+			}
 		}),
 	)
 
