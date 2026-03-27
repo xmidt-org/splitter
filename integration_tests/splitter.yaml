@@ -29,8 +29,18 @@ producer((replace)):
   topic_routes:
     - pattern: "*"
       topic: "default-events"
+      hash_key: "source"  # Extract device ID from source field
     - pattern: "device-status"
       topic: "device-status-events"
+      hash_key: "source"  # Extract device ID from source field
+
+buckets:
+  possible_buckets:
+    - name: "bucket-0"
+      threshold: 1.0
+  target_bucket: "bucket-0"
+  partition_key_type: "source"  # Extract device ID from source field for partitioning
+  missing_partition_key_action: "include"
 
 consumer((replace)):
   brokers:

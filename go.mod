@@ -19,7 +19,7 @@ require (
 	github.com/twmb/franz-go/plugin/kprom v1.3.0
 	github.com/xmidt-org/httpaux v0.4.2
 	github.com/xmidt-org/wrp-go/v5 v5.4.0
-	github.com/xmidt-org/wrpkafka v0.1.1
+	github.com/xmidt-org/wrpkafka v0.1.2
 	go.uber.org/fx v1.24.0
 	gopkg.in/dealancer/validate.v2 v2.1.0
 )

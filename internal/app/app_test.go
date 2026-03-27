@@ -405,15 +405,19 @@ func TestProvideConsumer(t *testing.T) {
 				{
 					Topic:   "wrp-events",
 					Pattern: "*",
+					HashKey: "source",
 				},
 			},
 		}
+
+		routes, err := pubConfig.ToWRPKafkaRoutes()
+		require.NoError(t, err, "Setup should convert routes successfully")
 
 		pub, err := publisher.New(
 			publisher.WithLogEmitter(logEmitter),
 			publisher.WithMetricsEmitter(metricEmitter),
 			publisher.WithBrokers(pubConfig.Brokers),
-			publisher.WithTopicRoutes(pubConfig.ToWRPKafkaRoutes()...),
+			publisher.WithTopicRoutes(routes...),
 		)
 		require.NoError(t, err, "Setup should create publisher successfully")
 		return pub
