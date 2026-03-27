@@ -33,7 +33,10 @@ func providePublisher(in PublisherIn) (PublisherOut, error) {
 	cfg := in.Config
 
 	// Convert config routes to wrpkafka routes
-	wrpRoutes := cfg.ToWRPKafkaRoutes()
+	wrpRoutes, err := cfg.ToWRPKafkaRoutes()
+	if err != nil {
+		return PublisherOut{}, fmt.Errorf("failed to convert topic routes: %w", err)
+	}
 
 	// Build options from configuration - validation is handled by the option functions
 	opts := []publisher.Option{

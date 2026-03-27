@@ -46,6 +46,7 @@ func (suite *ConfigTestSuite) TestTopicRoute_ToWRPKafkaRoute() {
 		name        string
 		topicRoute  TopicRoute
 		expected    wrpkafka.TopicRoute
+		expectError bool
 		description string
 	}{
 		{
@@ -53,10 +54,12 @@ func (suite *ConfigTestSuite) TestTopicRoute_ToWRPKafkaRoute() {
 			topicRoute: TopicRoute{
 				Topic:   "events",
 				Pattern: "event:.*",
+				HashKey: "source",
 			},
 			expected: wrpkafka.TopicRoute{
 				Topic:   "events",
 				Pattern: wrpkafka.Pattern("event:.*"),
+				HashKey: wrpkafka.HashKey{Name: wrpkafka.HashKeySource},
 			},
 			description: "Should convert TopicRoute to wrpkafka.TopicRoute correctly",
 		},
@@ -65,31 +68,64 @@ func (suite *ConfigTestSuite) TestTopicRoute_ToWRPKafkaRoute() {
 			topicRoute: TopicRoute{
 				Topic:   "commands",
 				Pattern: "mac:.*/command",
+				HashKey: "metadata/hw-deviceid",
 			},
 			expected: wrpkafka.TopicRoute{
 				Topic:   "commands",
 				Pattern: wrpkafka.Pattern("mac:.*/command"),
+				HashKey: wrpkafka.HashKey{Name: wrpkafka.HashKeyMetadata, MetadataField: "hw-deviceid"},
 			},
-			description: "Should handle complex routing patterns",
+			description: "Should handle complex routing patterns with metadata hash key",
 		},
 		{
 			name: "wildcard_route",
 			topicRoute: TopicRoute{
 				Topic:   "all-messages",
 				Pattern: ".*",
+				HashKey: "none",
 			},
 			expected: wrpkafka.TopicRoute{
 				Topic:   "all-messages",
 				Pattern: wrpkafka.Pattern(".*"),
+				HashKey: wrpkafka.HashKey{Name: wrpkafka.HashKeyNone},
 			},
-			description: "Should handle wildcard patterns",
+			description: "Should handle wildcard patterns with no hash key",
+		},
+		{
+			name: "route_with_default_hash_key",
+			topicRoute: TopicRoute{
+				Topic:   "events",
+				Pattern: "event:.*",
+				HashKey: "", // Empty should default to metadata/hw-deviceid
+			},
+			expected: wrpkafka.TopicRoute{
+				Topic:   "events",
+				Pattern: wrpkafka.Pattern("event:.*"),
+				HashKey: wrpkafka.HashKey{Name: wrpkafka.HashKeyMetadata, MetadataField: "hw-deviceid"},
+			},
+			description: "Should default to metadata/hw-deviceid when hash_key is empty",
+		},
+		{
+			name: "invalid_hash_key",
+			topicRoute: TopicRoute{
+				Topic:   "events",
+				Pattern: "event:.*",
+				HashKey: "invalid",
+			},
+			expectError: true,
+			description: "Should return error for invalid hash key",
 		},
 	}
 
 	for _, tt := range tests {
 		suite.Run(tt.name, func() {
-			result := tt.topicRoute.ToWRPKafkaRoute()
-			suite.Equal(tt.expected, result, tt.description)
+			result, err := tt.topicRoute.ToWRPKafkaRoute()
+			if tt.expectError {
+				suite.Error(err, tt.description)
+			} else {
+				suite.NoError(err, tt.description)
+				suite.Equal(tt.expected, result, tt.description)
+			}
 		})
 	}
 }
@@ -100,17 +136,18 @@ func (suite *ConfigTestSuite) TestConfig_ToWRPKafkaRoutes() {
 		name        string
 		config      Config
 		expected    []wrpkafka.TopicRoute
+		expectError bool
 		description string
 	}{
 		{
 			name: "single_route",
 			config: Config{
 				TopicRoutes: []TopicRoute{
-					{Topic: "events", Pattern: "event:.*"},
+					{Topic: "events", Pattern: "event:.*", HashKey: "source"},
 				},
 			},
 			expected: []wrpkafka.TopicRoute{
-				{Topic: "events", Pattern: wrpkafka.Pattern("event:.*")},
+				{Topic: "events", Pattern: wrpkafka.Pattern("event:.*"), HashKey: wrpkafka.HashKey{Name: wrpkafka.HashKeySource}},
 			},
 			description: "Should convert single route correctly",
 		},
@@ -118,15 +155,15 @@ func (suite *ConfigTestSuite) TestConfig_ToWRPKafkaRoutes() {
 			name: "multiple_routes",
 			config: Config{
 				TopicRoutes: []TopicRoute{
-					{Topic: "events", Pattern: "event:.*"},
-					{Topic: "commands", Pattern: "mac:.*/command"},
-					{Topic: "responses", Pattern: ".*response.*"},
+					{Topic: "events", Pattern: "event:.*", HashKey: "source"},
+					{Topic: "commands", Pattern: "mac:.*/command", HashKey: "metadata/hw-deviceid"},
+					{Topic: "responses", Pattern: ".*response.*", HashKey: "none"},
 				},
 			},
 			expected: []wrpkafka.TopicRoute{
-				{Topic: "events", Pattern: wrpkafka.Pattern("event:.*")},
-				{Topic: "commands", Pattern: wrpkafka.Pattern("mac:.*/command")},
-				{Topic: "responses", Pattern: wrpkafka.Pattern(".*response.*")},
+				{Topic: "events", Pattern: wrpkafka.Pattern("event:.*"), HashKey: wrpkafka.HashKey{Name: wrpkafka.HashKeySource}},
+				{Topic: "commands", Pattern: wrpkafka.Pattern("mac:.*/command"), HashKey: wrpkafka.HashKey{Name: wrpkafka.HashKeyMetadata, MetadataField: "hw-deviceid"}},
+				{Topic: "responses", Pattern: wrpkafka.Pattern(".*response.*"), HashKey: wrpkafka.HashKey{Name: wrpkafka.HashKeyNone}},
 			},
 			description: "Should convert multiple routes correctly",
 		},
@@ -138,12 +175,27 @@ func (suite *ConfigTestSuite) TestConfig_ToWRPKafkaRoutes() {
 			expected:    []wrpkafka.TopicRoute{},
 			description: "Should handle empty routes slice",
 		},
+		{
+			name: "route_with_invalid_hash_key",
+			config: Config{
+				TopicRoutes: []TopicRoute{
+					{Topic: "events", Pattern: "event:.*", HashKey: "invalid"},
+				},
+			},
+			expectError: true,
+			description: "Should return error for invalid hash key",
+		},
 	}
 
 	for _, tt := range tests {
 		suite.Run(tt.name, func() {
-			result := tt.config.ToWRPKafkaRoutes()
-			suite.Equal(tt.expected, result, tt.description)
+			result, err := tt.config.ToWRPKafkaRoutes()
+			if tt.expectError {
+				suite.Error(err, tt.description)
+			} else {
+				suite.NoError(err, tt.description)
+				suite.Equal(tt.expected, result, tt.description)
+			}
 		})
 	}
 }
