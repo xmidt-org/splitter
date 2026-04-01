@@ -151,3 +151,10 @@ logger:
 
   # Time encoding (iso8601, millis, nanos, rfc3339)
   encode_time: "iso8601"
+
+  # rotation:                        # Log rotation settings (for file outputs)
+  #   max_size: 100                  # Max size in MB before rotation
+  #   max_age: 30                    # Days to keep old files
+  #   max_backups: 3                 # Number of old files to retain
+  #   compress: true                 # Compress rotated files
+  #   local_time: false              # Use local time for backup filenames
