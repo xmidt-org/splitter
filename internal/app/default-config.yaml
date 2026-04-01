@@ -156,5 +156,5 @@ logger:
   #   maxsize: 50                    # Max size in MB before rotation
   #   maxage: 2                      # Days to keep old files
   #   maxbackups: 10                 # Number of old files to retain
-  #   json: true                     # Compress rotated files
+  #   compress: true                 # Compress rotated files
   #   localtime: false               # Use local time for backup filenames
