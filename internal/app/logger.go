@@ -43,19 +43,19 @@ type LogConfig struct {
 // RotationConfig defines log rotation settings
 type RotationConfig struct {
 	// MaxSize is the maximum size in megabytes of the log file before it gets rotated
-	MaxSize int `yaml:"maxsize" default:"50"`
+	MaxSize int `yaml:"max_size" default:"50"`
 
 	// MaxAge is the maximum number of days to retain old log files
-	MaxAge int `yaml:"maxage" default:"2"`
+	MaxAge int `yaml:"max_age" default:"2"`
 
 	// MaxBackups is the maximum number of old log files to retain
-	MaxBackups int `yaml:"maxbackups" default:"10"`
+	MaxBackups int `yaml:"max_backups" default:"10"`
 
 	// Compress determines if rotated files should be compressed using gzip
 	Compress bool `yaml:"compress" default:"true"`
 
 	// LocalTime determines if the time used for formatting the timestamps in backup files is the computer's local time
-	LocalTime bool `yaml:"localtime" default:"false"`
+	LocalTime bool `yaml:"local_time" default:"false"`
 }
 
 // newLogger creates a new structured logger based on the configuration.
