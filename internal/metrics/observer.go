@@ -5,52 +5,91 @@ package metrics
 
 import (
 	"fmt"
+
+	kit "github.com/go-kit/kit/metrics"
 )
 
-type Observer struct {
-	metric     Metric
-	name       string
-	metricType metricType
+// Generic observers that can handle multiple metrics of the same type
+type CounterObserver struct {
+	counters map[string]kit.Counter
 }
 
-func NewObserver(name string, metricType metricType, metric Metric) *Observer {
-	return &Observer{
-		name:       name,
-		metricType: metricType,
-		metric:     metric,
-	}
+type GaugeObserver struct {
+	gauges map[string]kit.Gauge
 }
 
-func (l *Observer) HandleEvent(event Event) {
-	// Catch any panics from Prometheus/go-kit metrics
+type HistogramObserver struct {
+	histograms map[string]kit.Histogram
+}
+
+// NewCounterObserver creates a new observer for counter metrics
+func NewCounterObserver(counters map[string]kit.Counter) *CounterObserver {
+	return &CounterObserver{counters: counters}
+}
+
+// NewGaugeObserver creates a new observer for gauge metrics
+func NewGaugeObserver(gauges map[string]kit.Gauge) *GaugeObserver {
+	return &GaugeObserver{gauges: gauges}
+}
+
+// NewHistogramObserver creates a new observer for histogram metrics
+func NewHistogramObserver(histograms map[string]kit.Histogram) *HistogramObserver {
+	return &HistogramObserver{histograms: histograms}
+}
+
+func (c *CounterObserver) HandleEvent(event Event) {
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Printf("ERROR: Prometheus panic for metric '%s': %v (labels: %v)\n", l.name, r, event.Labels)
+			fmt.Printf("ERROR: Prometheus panic for counter metric '%s': %v (labels: %v)\n", event.Name, r, event.Labels)
 		}
 	}()
 
-	if l.name != event.Name {
+	counter, ok := c.counters[event.Name]
+	if !ok {
+		// Silently ignore unknown metrics
 		return
 	}
-
-	switch l.metricType {
-	case COUNTER:
-		if l.metric.counter == nil {
-			fmt.Printf("ERROR: counter for metric '%s' is nil\n", l.name)
-			return
-		}
-		l.metric.counter.With(event.Labels...).Add(event.Value)
-	case GAUGE:
-		if l.metric.gauge == nil {
-			fmt.Printf("ERROR: gauge for metric '%s' is nil\n", l.name)
-			return
-		}
-		l.metric.gauge.With(event.Labels...).Set(event.Value)
-	case HISTOGRAM:
-		if l.metric.histogram == nil {
-			fmt.Printf("ERROR: histogram for metric '%s' is nil\n", l.name)
-			return
-		}
-		l.metric.histogram.With(event.Labels...).Observe(event.Value)
+	if counter == nil {
+		fmt.Printf("ERROR: counter for metric '%s' is nil\n", event.Name)
+		return
 	}
+	counter.With(event.Labels...).Add(event.Value)
+}
+
+func (g *GaugeObserver) HandleEvent(event Event) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("ERROR: Prometheus panic for gauge metric '%s': %v (labels: %v)\n", event.Name, r, event.Labels)
+		}
+	}()
+
+	gauge, ok := g.gauges[event.Name]
+	if !ok {
+		// Silently ignore unknown metrics
+		return
+	}
+	if gauge == nil {
+		fmt.Printf("ERROR: gauge for metric '%s' is nil\n", event.Name)
+		return
+	}
+	gauge.With(event.Labels...).Set(event.Value)
+}
+
+func (h *HistogramObserver) HandleEvent(event Event) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("ERROR: Prometheus panic for histogram metric '%s': %v (labels: %v)\n", event.Name, r, event.Labels)
+		}
+	}()
+
+	histogram, ok := h.histograms[event.Name]
+	if !ok {
+		// Silently ignore unknown metrics
+		return
+	}
+	if histogram == nil {
+		fmt.Printf("ERROR: histogram for metric '%s' is nil\n", event.Name)
+		return
+	}
+	histogram.With(event.Labels...).Observe(event.Value)
 }
