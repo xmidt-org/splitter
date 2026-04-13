@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 // createMinimalMetrics creates a Metrics struct with mock metrics
@@ -203,10 +204,25 @@ func TestSubjectAsync(t *testing.T) {
 		shouldPanic  bool
 	}{
 		{
-			name:         "async events don't panic",
-			setupMetrics: createMinimalMetrics,
-			eventCount:   10,
-			shouldPanic:  false,
+			name: "async events don't panic",
+			setupMetrics: func() Metrics {
+				// Set up mock with expectations for async test
+				publisherOutcomes := &MockCounter{}
+				publisherOutcomes.On("With", []string{"test", "async"}).Return(publisherOutcomes).Maybe()
+				publisherOutcomes.On("Add", mock.AnythingOfType("float64")).Return().Maybe()
+
+				// Set up panic counter expectations
+				panicCounter := &MockCounter{}
+				panicCounter.On("With", []string{"metric_name", "publish_outcomes", "metric_type", "counter"}).Return(panicCounter).Maybe()
+				panicCounter.On("Add", 1.0).Return().Maybe()
+
+				mockMetrics := createMinimalMetrics()
+				mockMetrics.PublisherOutcomes = publisherOutcomes
+				mockMetrics.MetricPanics = panicCounter
+				return mockMetrics
+			},
+			eventCount:  10,
+			shouldPanic: false,
 		},
 	}
 
