@@ -37,22 +37,21 @@ func New(m Metrics) *observe.Subject[Event] {
 
 	// Create observers
 	counterMetrics := map[string]kit.Counter{
-		"fetch_errors":                   m.ConsumerFetchErrors,
-		"commit_errors":                  m.ConsumerCommitErrors,
-		"bucket_key_error_count":         m.BucketKeyErrorCount,
-		"publish_outcomes":               m.PublisherOutcomes,
-		"publish_errors_total":           m.PublisherErrorsCounter,
-		"kafka_messages_published_total": m.KafkaPublished,
-		"panics_total":                   m.Panics,
-		"unknown_metrics_total":          m.UnknownMetrics,
+		ConsumerFetchErrors:    m.ConsumerFetchErrors,
+		ConsumerCommitErrors:   m.ConsumerCommitErrors,
+		BucketKeyErrorCount:    m.BucketKeyErrorCount,
+		PublisherOutcomes:      m.PublisherOutcomes,
+		PublisherErrorsCounter: m.PublisherErrorsCounter,
+		KafkaPublished:         m.KafkaPublished,
+		Panics:                 m.Panics,
 	}
 
 	gaugeMetrics := map[string]kit.Gauge{
-		"fetch_pauses": m.ConsumerPauses,
+		ConsumerPauses: m.ConsumerPauses,
 	}
 
 	histogramMetrics := map[string]kit.Histogram{
-		"kafka_publish_latency_seconds": m.KafkaPublishLatency,
+		KafkaPublishLatency: m.KafkaPublishLatency,
 	}
 
 	counterObserver := NewCounterObserver(counterMetrics)
