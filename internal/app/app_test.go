@@ -13,6 +13,8 @@ import (
 	"os"
 	"testing"
 	"time"
+
+	"xmidt-org/splitter/internal/bucket"
 	"xmidt-org/splitter/internal/consumer"
 	"xmidt-org/splitter/internal/log"
 	"xmidt-org/splitter/internal/metrics"
@@ -25,6 +27,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"github.com/xmidt-org/touchstone"
 	"github.com/xmidt-org/wrp-go/v5"
 	"github.com/xmidt-org/wrpkafka"
 )
@@ -423,6 +426,25 @@ func TestProvideConsumer(t *testing.T) {
 		return pub
 	}
 
+	// Helper function to create a valid bucket configuration for testing
+	createValidBucketConfig := func() bucket.Config {
+		return bucket.Config{
+			TargetBucket: "bucket-0",
+			PossibleBuckets: []bucket.BucketSettings{
+				{Name: "bucket-0", Threshold: 1.0},
+			},
+			PartitionKeyType: "source",
+		}
+	}
+
+	// Helper function to create a valid Bucket instance for testing
+	createValidBucket := func() bucket.Bucket {
+		cfg := createValidBucketConfig()
+		b, err := bucket.NewBuckets(cfg)
+		require.NoError(t, err, "Setup should create bucket successfully")
+		return b
+	}
+
 	testCases := []struct {
 		name        string
 		setupConfig func() ConsumerIn
@@ -448,9 +470,15 @@ func TestProvideConsumer(t *testing.T) {
 						FetchMaxBytes:     1024 * 1024,
 						FetchMaxWait:      500 * time.Millisecond,
 					},
+					BucketConfig: createValidBucketConfig(),
+					PrometheusConfig: touchstone.Config{
+						DefaultNamespace: "xmidt",
+						DefaultSubsystem: "test",
+					},
 					Publisher:     createValidKafkaPublisher(),
 					LogEmitter:    logEmitter,
 					MetricEmitter: metricEmitter,
+					Buckets:       createValidBucket(),
 				}
 			},
 			expectError: false,
@@ -468,9 +496,15 @@ func TestProvideConsumer(t *testing.T) {
 						Topics:  []string{}, // Empty topics should cause validation error
 						GroupID: "splitter-group",
 					},
+					BucketConfig: createValidBucketConfig(),
+					PrometheusConfig: touchstone.Config{
+						DefaultNamespace: "xmidt",
+						DefaultSubsystem: "test",
+					},
 					Publisher:     createValidKafkaPublisher(),
 					LogEmitter:    logEmitter,
 					MetricEmitter: metricEmitter,
+					Buckets:       createValidBucket(),
 				}
 			},
 			expectError: true,
