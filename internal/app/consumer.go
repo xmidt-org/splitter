@@ -13,17 +13,19 @@ import (
 	"xmidt-org/splitter/internal/observe"
 	"xmidt-org/splitter/internal/publisher"
 
+	"github.com/xmidt-org/touchstone"
 	"go.uber.org/fx"
 )
 
 type ConsumerIn struct {
 	fx.In
-	Config        consumer.Config
-	BucketConfig  bucket.Config
-	Publisher     publisher.Publisher
-	LogEmitter    *observe.Subject[log.Event]
-	MetricEmitter *observe.Subject[metrics.Event]
-	Buckets       bucket.Bucket
+	Config           consumer.Config
+	BucketConfig     bucket.Config
+	PrometheusConfig touchstone.Config
+	Publisher        publisher.Publisher
+	LogEmitter       *observe.Subject[log.Event]
+	MetricEmitter    *observe.Subject[metrics.Event]
+	Buckets          bucket.Bucket
 }
 
 type ConsumerOut struct {
@@ -53,6 +55,7 @@ func provideConsumer(in ConsumerIn) (ConsumerOut, error) {
 	opts := []consumer.Option{
 		// Observability
 		consumer.WithLogEmitter(in.LogEmitter),
+		consumer.WithPrometheusMetrics(in.PrometheusConfig.DefaultNamespace, in.PrometheusConfig.DefaultSubsystem),
 		consumer.WithMetricsEmitter(in.MetricEmitter),
 
 		// Required options

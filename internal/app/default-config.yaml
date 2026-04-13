@@ -32,7 +32,7 @@ tracing:
 
 prometheus:
   default_namespace: xmidt
-  default_subsystem: wrp_kafka_splitter
+  default_subsystem: splitter
 
 prometheus_handler:
   instrument_metric_handler: true
