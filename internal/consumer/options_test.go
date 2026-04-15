@@ -16,6 +16,7 @@ import (
 	"xmidt-org/splitter/internal/metrics"
 
 	kit "github.com/go-kit/kit/metrics"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/suite"
 	"github.com/twmb/franz-go/pkg/kgo"
 )
@@ -562,7 +563,7 @@ func (s *OptionsTestSuite) TestWithLogEmitter_Nil() {
 
 func (s *OptionsTestSuite) TestWithPrometheusMetrics() {
 	consumer, err := s.createTestConsumer(
-		WithPrometheusMetrics("test_namespace", "test_subsystem"),
+		WithPrometheusMetrics("test_namespace", "test_subsystem", nil),
 	)
 	s.NoError(err)
 	s.NotNil(consumer)
@@ -571,7 +572,7 @@ func (s *OptionsTestSuite) TestWithPrometheusMetrics() {
 
 func (s *OptionsTestSuite) TestWithPrometheusMetrics_EmptyNamespace() {
 	consumer, err := s.createTestConsumer(
-		WithPrometheusMetrics("", "subsystem"),
+		WithPrometheusMetrics("", "subsystem", nil),
 	)
 	s.Error(err)
 	s.Nil(consumer)
@@ -580,11 +581,23 @@ func (s *OptionsTestSuite) TestWithPrometheusMetrics_EmptyNamespace() {
 
 func (s *OptionsTestSuite) TestWithPrometheusMetrics_EmptySubsystem() {
 	consumer, err := s.createTestConsumer(
-		WithPrometheusMetrics("namespace", ""),
+		WithPrometheusMetrics("namespace", "", nil),
 	)
 	s.Error(err)
 	s.Nil(consumer)
 	s.Contains(err.Error(), "subsystem cannot be empty")
+}
+
+func (s *OptionsTestSuite) TestWithPrometheusMetrics_CustomRegistry() {
+	// Create a custom prometheus registry
+	customRegistry := prometheus.NewRegistry()
+
+	consumer, err := s.createTestConsumer(
+		WithPrometheusMetrics("custom_namespace", "custom_subsystem", customRegistry),
+	)
+	s.NoError(err)
+	s.NotNil(consumer)
+	s.NotEmpty(consumer.config.kgoOpts)
 }
 
 func (s *OptionsTestSuite) TestWithMetricsEmitter() {
