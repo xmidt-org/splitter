@@ -82,14 +82,32 @@ func New(opts ...Option) (*KafkaPublisher, error) {
 		AllowAutoTopicCreation:       publisher.config.allowAutoTopicCreation,
 		Logger:                       publisher.config.logger,
 		InitialPublishEventListeners: publisher.config.publishEventListeners,
-		PrometheusNamespace:          publisher.config.prometheusNamespace,
-		PrometheusSubsystem:          publisher.config.prometheusSubsystem,
-		PrometheusRegisterer:         publisher.config.prometheusRegisterer,
+		Prometheus:                   publisher.toWRPKafkaPrometheusConfig(),
 	}
 
 	publisher.wrpPublisher = wrpPublisher
 
 	return publisher, nil
+}
+
+// toWRPKafkaPrometheusConfig converts our PrometheusConfig to wrpkafka.PrometheusConfig.
+func (p *KafkaPublisher) toWRPKafkaPrometheusConfig() wrpkafka.PrometheusConfig {
+	if p.config.prometheus == nil {
+		return wrpkafka.PrometheusConfig{}
+	}
+
+	cfg := wrpkafka.PrometheusConfig{
+		Namespace:             p.config.prometheus.Namespace,
+		Subsystem:             p.config.prometheus.Subsystem,
+		Registerer:            p.config.prometheus.Registerer,
+		EnableRecordMetrics:   p.config.prometheus.EnableRecordMetrics,
+		EnableBatchMetrics:    p.config.prometheus.EnableBatchMetrics,
+		EnableCompressedBytes: p.config.prometheus.EnableCompressedBytes,
+		EnableGoCollectors:    p.config.prometheus.EnableGoCollectors,
+		WithClientLabel:       p.config.prometheus.WithClientLabel,
+	}
+
+	return cfg
 }
 
 // Start initializes and starts the publisher.
@@ -108,6 +126,7 @@ func (p *KafkaPublisher) Start() error {
 	}))
 
 	// Add event listener for all publish events (success and failure)
+	// Application-level metrics are always enabled
 	p.wrpPublisher.AddPublishEventListener(func(event *wrpkafka.PublishEvent) {
 
 		errorType := "success"
@@ -144,7 +163,7 @@ func (p *KafkaPublisher) Start() error {
 
 	})
 
-	// Set up buffer utilization function for automatic Prometheus scraping
+	// Set up buffer utilization function for automatic Prometheus scraping (always enabled)
 	if p.config.maxBufferedRecords > 0 {
 		metrics.BufferUtilization = p.wrpPublisher.BufferedRecords
 	}

@@ -15,7 +15,6 @@ import (
 	"xmidt-org/splitter/internal/metrics"
 	"xmidt-org/splitter/internal/observe"
 
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/twmb/franz-go/pkg/kgo"
 	"github.com/twmb/franz-go/pkg/sasl"
 	"github.com/twmb/franz-go/pkg/sasl/plain"
@@ -58,9 +57,7 @@ type publisherConfig struct {
 	allowAutoTopicCreation bool
 	logger                 kgo.Logger
 	publishEventListeners  []func(*wrpkafka.PublishEvent)
-	prometheusNamespace    string
-	prometheusSubsystem    string
-	prometheusRegisterer   prometheus.Registerer
+	prometheus             *PrometheusConfig
 }
 
 // validate ensures all required configuration is present.
@@ -310,11 +307,14 @@ func WithTLS() Option {
 	return WithTLSConfig(&TLSConfig{Enabled: true})
 }
 
-func WithPrometheusMetrics(namespace, subsystem string, registerer prometheus.Registerer) Option {
+// WithPrometheusConfig configures Prometheus metrics for the publisher.
+// This consolidates all prometheus settings into a single struct with fine-grained control
+// over individual metrics and franz-go specific options.
+func WithPrometheusConfig(config *PrometheusConfig) Option {
 	return optionFunc(func(p *KafkaPublisher) error {
-		p.config.prometheusNamespace = namespace
-		p.config.prometheusSubsystem = subsystem
-		p.config.prometheusRegisterer = registerer
+		if config != nil {
+			p.config.prometheus = config
+		}
 		return nil
 	})
 }
