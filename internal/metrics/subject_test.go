@@ -67,7 +67,7 @@ func TestSubjectNotify(t *testing.T) {
 			name: "counter metric handled correctly",
 			setupMetrics: func() (Metrics, []string) {
 				counter := &MockCounter{}
-				expectedLabels := []string{PartitionLabel, "0", TopicLabel, "test-topic"}
+				expectedLabels := []string{PartitionLabel, "0", TopicLabel, testTopicValue}
 				counter.On("With", expectedLabels).Return(counter)
 				counter.On("Add", 1.0).Return()
 
@@ -76,8 +76,8 @@ func TestSubjectNotify(t *testing.T) {
 				return mockMetrics, expectedLabels
 			},
 			event: Event{
-				Name:   "fetch_errors",
-				Labels: []string{PartitionLabel, "0", TopicLabel, "test-topic"},
+				Name:   ConsumerFetchErrors,
+				Labels: []string{PartitionLabel, "0", TopicLabel, testTopicValue},
 				Value:  1.0,
 			},
 			useSync:     true,
@@ -96,7 +96,7 @@ func TestSubjectNotify(t *testing.T) {
 				return mockMetrics, expectedLabels
 			},
 			event: Event{
-				Name:   "fetch_pauses",
+				Name:   ConsumerPauses,
 				Labels: []string{GroupLabel, "test-group"},
 				Value:  5.0,
 			},
@@ -116,7 +116,7 @@ func TestSubjectNotify(t *testing.T) {
 				return mockMetrics, expectedLabels
 			},
 			event: Event{
-				Name:   "kafka_publish_latency_seconds",
+				Name:   KafkaPublishLatency,
 				Labels: []string{OutcomeLabel, "success"},
 				Value:  123.45,
 			},
@@ -129,7 +129,7 @@ func TestSubjectNotify(t *testing.T) {
 				counter := &MockCounter{}
 				unknownCounter := &MockCounter{}
 				// Set up expectations for unknown metrics tracking
-				unknownCounter.On("With", []string{"metric_name", "unknown_metric_name", "metric_type", "unknown"}).Return(unknownCounter)
+				unknownCounter.On("With", []string{MetricNameLabel, "unknown_metric_name", MetricTypeLabel, unknownTagValue}).Return(unknownCounter)
 				unknownCounter.On("Add", 1.0).Return()
 
 				mockMetrics := createMinimalMetrics()
@@ -173,15 +173,15 @@ func TestSubjectNotify(t *testing.T) {
 			if tt.verifyMocks {
 				// Verify specific mocks based on the test
 				switch tt.event.Name {
-				case "fetch_errors":
+				case ConsumerFetchErrors:
 					if counter, ok := mockMetrics.ConsumerFetchErrors.(*MockCounter); ok {
 						counter.AssertExpectations(t)
 					}
-				case "fetch_pauses":
+				case ConsumerPauses:
 					if gauge, ok := mockMetrics.ConsumerPauses.(*MockGauge); ok {
 						gauge.AssertExpectations(t)
 					}
-				case "kafka_publish_latency_seconds":
+				case KafkaPublishLatency:
 					if histogram, ok := mockMetrics.KafkaPublishLatency.(*MockHistogram); ok {
 						histogram.AssertExpectations(t)
 					}
@@ -208,12 +208,12 @@ func TestSubjectAsync(t *testing.T) {
 			setupMetrics: func() Metrics {
 				// Set up mock with expectations for async test
 				publisherOutcomes := &MockCounter{}
-				publisherOutcomes.On("With", []string{"test", "async"}).Return(publisherOutcomes).Maybe()
+				publisherOutcomes.On("With", []string{"test", testAsyncValue}).Return(publisherOutcomes).Maybe()
 				publisherOutcomes.On("Add", mock.AnythingOfType("float64")).Return().Maybe()
 
 				// Set up panic counter expectations
 				panicCounter := &MockCounter{}
-				panicCounter.On("With", []string{"metric_name", "publish_outcomes", "metric_type", "counter"}).Return(panicCounter).Maybe()
+				panicCounter.On("With", []string{MetricNameLabel, PublisherOutcomes, MetricTypeLabel, "counter"}).Return(panicCounter).Maybe()
 				panicCounter.On("Add", 1.0).Return().Maybe()
 
 				mockMetrics := createMinimalMetrics()
@@ -245,8 +245,8 @@ func TestSubjectAsync(t *testing.T) {
 				assert.NotPanics(t, func() {
 					for i := 0; i < tt.eventCount; i++ {
 						go subject.Notify(Event{
-							Name:   "publish_outcomes",
-							Labels: []string{"test", "async"},
+							Name:   PublisherOutcomes,
+							Labels: []string{"test", testAsyncValue},
 							Value:  float64(i),
 						})
 					}

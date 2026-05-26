@@ -189,6 +189,12 @@ func WithAllowAutoTopicCreation(allow bool) Option {
 	})
 }
 
+const (
+	saslMechanismPlain    = "PLAIN"
+	saslMechanismScram256 = "SCRAM-SHA-256"
+	saslMechanismScram512 = "SCRAM-SHA-512"
+)
+
 // WithSASLConfig configures SASL authentication.
 func WithSASLConfig(saslConfig *SASLConfig) Option {
 	return optionFunc(func(p *KafkaPublisher) error {
@@ -202,17 +208,17 @@ func WithSASLConfig(saslConfig *SASLConfig) Option {
 
 		var mechanism sasl.Mechanism
 		switch saslConfig.Mechanism {
-		case "PLAIN":
+		case saslMechanismPlain:
 			mechanism = plain.Auth{
 				User: saslConfig.Username,
 				Pass: saslConfig.Password,
 			}.AsMechanism()
-		case "SCRAM-SHA-256":
+		case saslMechanismScram256:
 			mechanism = scram.Auth{
 				User: saslConfig.Username,
 				Pass: saslConfig.Password,
 			}.AsSha256Mechanism()
-		case "SCRAM-SHA-512":
+		case saslMechanismScram512:
 			mechanism = scram.Auth{
 				User: saslConfig.Username,
 				Pass: saslConfig.Password,

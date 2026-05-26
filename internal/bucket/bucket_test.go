@@ -11,8 +11,13 @@ import (
 	"github.com/xmidt-org/wrp-go/v5"
 )
 
+const (
+	testBucketA  = "bucketA"
+	testDeviceID = "mac:112233445566"
+)
+
 var TestBuckets = []BucketSettings{
-	{"bucketA", 0.33},
+	{testBucketA, 0.33},
 	{"bucketB", 0.66},
 	{"bucketC", 1.0},
 }
@@ -64,7 +69,7 @@ func (s *BucketsSuite) TestNewBuckets_InvalidKeyType() {
 
 func (s *BucketsSuite) TestNewBuckets_ValidKeyType() {
 	cfg := Config{
-		TargetBucket:     "bucketA",
+		TargetBucket:     testBucketA,
 		PossibleBuckets:  s.bucketDefs,
 		PartitionKeyType: "metadata/hw-deviceid",
 	}
@@ -83,14 +88,14 @@ func (s *BucketsSuite) TestNewBuckets_NoBuckets() {
 func (s *BucketsSuite) TestNoBuckets() {
 	buckets, err := NewBuckets(Config{})
 	assert.NoError(s.T(), err)
-	msg := &wrp.Message{Metadata: map[string]string{DeviceIdMetadataKeyName: "mac:112233445566"}}
+	msg := &wrp.Message{Metadata: map[string]string{DeviceIdMetadataKeyName: testDeviceID}}
 	inBucket, err := buckets.IsInTargetBucket(msg)
 	assert.NoError(s.T(), err)
 	assert.True(s.T(), inBucket)
 }
 
 func (s *BucketsSuite) TestIsInBucket_True() {
-	msg := &wrp.Message{Metadata: map[string]string{DeviceIdMetadataKeyName: "mac:112233445566"}}
+	msg := &wrp.Message{Metadata: map[string]string{DeviceIdMetadataKeyName: testDeviceID}}
 	partitionKey, _ := s.buckets.getPartitionKey(msg)
 	partitioner := NewPartitioner()
 	bucket, _ := partitioner.Partition(partitionKey, s.buckets.thresholds)
@@ -109,7 +114,7 @@ func (s *BucketsSuite) TestIsInBucketHardcodedValue_True() {
 }
 
 func (s *BucketsSuite) TestIsInBucket_False() {
-	msg := &wrp.Message{Metadata: map[string]string{DeviceIdMetadataKeyName: "mac:112233445566"}}
+	msg := &wrp.Message{Metadata: map[string]string{DeviceIdMetadataKeyName: testDeviceID}}
 	partitionKey, _ := s.buckets.getPartitionKey(msg)
 	partitioner := NewPartitioner()
 	bucket, _ := partitioner.Partition(partitionKey, s.buckets.thresholds)

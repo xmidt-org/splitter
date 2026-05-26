@@ -112,7 +112,7 @@ func (suite *PublisherTestSuite) TestNew() {
 			options: []Option{
 				WithBrokers(multiBroker),
 				WithTopicRoutes(
-					wrpkafka.TopicRoute{Topic: "events", Pattern: "event:.*"},
+					wrpkafka.TopicRoute{Topic: "events", Pattern: testPatternEvent},
 					wrpkafka.TopicRoute{Topic: "requests", Pattern: "mac:.*"},
 				),
 				WithLogger(slog.Default()),
@@ -353,13 +353,13 @@ func (suite *PublisherTestSuite) TestToWRPKafkaPrometheusConfig() {
 			name: "selective_metrics",
 			config: &PrometheusConfig{
 				Namespace:          "monitoring",
-				Subsystem:          "kafka",
+				Subsystem:          testSubsystemKafka,
 				EnableGoCollectors: true,
 				// Other metrics remain false (default)
 			},
 			expected: wrpkafka.PrometheusConfig{
 				Namespace:             "monitoring",
-				Subsystem:             "kafka",
+				Subsystem:             testSubsystemKafka,
 				Registerer:            nil,
 				EnableBatchMetrics:    false,
 				EnableCompressedBytes: false,
@@ -642,7 +642,7 @@ func (suite *PublisherTestSuite) TestProduceMessageTypes() {
 			name: "create_message",
 			message: &wrp.Message{
 				Type:        wrp.CreateMessageType,
-				Source:      "dns:webpa-server.example.com/api/v2/device",
+				Source:      testDeviceSource,
 				Destination: "mac:112233445566/config",
 				Payload:     []byte(`{"parameters": {"Device.WiFi.SSID": "MyNetwork"}}`),
 			},
@@ -652,7 +652,7 @@ func (suite *PublisherTestSuite) TestProduceMessageTypes() {
 			name: "retrieve_message",
 			message: &wrp.Message{
 				Type:        wrp.RetrieveMessageType,
-				Source:      "dns:webpa-server.example.com/api/v2/device",
+				Source:      testDeviceSource,
 				Destination: "mac:112233445566/config",
 				Payload:     []byte(`{"names": ["Device.WiFi.SSID"]}`),
 			},
@@ -662,7 +662,7 @@ func (suite *PublisherTestSuite) TestProduceMessageTypes() {
 			name: "update_message",
 			message: &wrp.Message{
 				Type:        wrp.UpdateMessageType,
-				Source:      "dns:webpa-server.example.com/api/v2/device",
+				Source:      testDeviceSource,
 				Destination: "mac:112233445566/config",
 				Payload:     []byte(`{"parameters": {"Device.WiFi.SSID": "UpdatedNetwork"}}`),
 			},
@@ -672,7 +672,7 @@ func (suite *PublisherTestSuite) TestProduceMessageTypes() {
 			name: "delete_message",
 			message: &wrp.Message{
 				Type:        wrp.DeleteMessageType,
-				Source:      "dns:webpa-server.example.com/api/v2/device",
+				Source:      testDeviceSource,
 				Destination: "mac:112233445566/config",
 				Payload:     []byte(`{"names": ["Device.WiFi.SSID"]}`),
 			},

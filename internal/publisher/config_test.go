@@ -35,6 +35,15 @@ var emptyBroker = Brokers{
 	Regions:               map[string][]string{},
 }
 
+const (
+	testTopicEvents    = "events"
+	testTopicCommands  = "commands"
+	testPatternEvent   = "event:.*"
+	testMetadataDevice = "hw-deviceid"
+	testSubsystemKafka = "kafka"
+	testDeviceSource   = "dns:webpa-server.example.com/api/v2/device"
+)
+
 // Test suite for Config
 type ConfigTestSuite struct {
 	suite.Suite
@@ -52,13 +61,13 @@ func (suite *ConfigTestSuite) TestTopicRoute_ToWRPKafkaRoute() {
 		{
 			name: "simple_route",
 			topicRoute: TopicRoute{
-				Topic:   "events",
-				Pattern: "event:.*",
+				Topic:   testTopicEvents,
+				Pattern: testPatternEvent,
 				HashKey: "source",
 			},
 			expected: wrpkafka.TopicRoute{
-				Topic:   "events",
-				Pattern: wrpkafka.Pattern("event:.*"),
+				Topic:   testTopicEvents,
+				Pattern: wrpkafka.Pattern(testPatternEvent),
 				HashKey: wrpkafka.HashKey{Name: wrpkafka.HashKeySource},
 			},
 			description: "Should convert TopicRoute to wrpkafka.TopicRoute correctly",
@@ -66,14 +75,14 @@ func (suite *ConfigTestSuite) TestTopicRoute_ToWRPKafkaRoute() {
 		{
 			name: "command_route",
 			topicRoute: TopicRoute{
-				Topic:   "commands",
+				Topic:   testTopicCommands,
 				Pattern: "mac:.*/command",
-				HashKey: "metadata/hw-deviceid",
+				HashKey: "metadata/" + testMetadataDevice,
 			},
 			expected: wrpkafka.TopicRoute{
-				Topic:   "commands",
+				Topic:   testTopicCommands,
 				Pattern: wrpkafka.Pattern("mac:.*/command"),
-				HashKey: wrpkafka.HashKey{Name: wrpkafka.HashKeyMetadata, MetadataField: "hw-deviceid"},
+				HashKey: wrpkafka.HashKey{Name: wrpkafka.HashKeyMetadata, MetadataField: testMetadataDevice},
 			},
 			description: "Should handle complex routing patterns with metadata hash key",
 		},
@@ -94,22 +103,22 @@ func (suite *ConfigTestSuite) TestTopicRoute_ToWRPKafkaRoute() {
 		{
 			name: "route_with_default_hash_key",
 			topicRoute: TopicRoute{
-				Topic:   "events",
-				Pattern: "event:.*",
+				Topic:   testTopicEvents,
+				Pattern: testPatternEvent,
 				HashKey: "", // Empty should default to metadata/hw-deviceid
 			},
 			expected: wrpkafka.TopicRoute{
-				Topic:   "events",
-				Pattern: wrpkafka.Pattern("event:.*"),
-				HashKey: wrpkafka.HashKey{Name: wrpkafka.HashKeyMetadata, MetadataField: "hw-deviceid"},
+				Topic:   testTopicEvents,
+				Pattern: wrpkafka.Pattern(testPatternEvent),
+				HashKey: wrpkafka.HashKey{Name: wrpkafka.HashKeyMetadata, MetadataField: testMetadataDevice},
 			},
-			description: "Should default to metadata/hw-deviceid when hash_key is empty",
+			description: "Should default to metadata/" + testMetadataDevice + " when hash_key is empty",
 		},
 		{
 			name: "invalid_hash_key",
 			topicRoute: TopicRoute{
-				Topic:   "events",
-				Pattern: "event:.*",
+				Topic:   testTopicEvents,
+				Pattern: testPatternEvent,
 				HashKey: "invalid",
 			},
 			expectError: true,
@@ -143,11 +152,11 @@ func (suite *ConfigTestSuite) TestConfig_ToWRPKafkaRoutes() {
 			name: "single_route",
 			config: Config{
 				TopicRoutes: []TopicRoute{
-					{Topic: "events", Pattern: "event:.*", HashKey: "source"},
+					{Topic: testTopicEvents, Pattern: testPatternEvent, HashKey: "source"},
 				},
 			},
 			expected: []wrpkafka.TopicRoute{
-				{Topic: "events", Pattern: wrpkafka.Pattern("event:.*"), HashKey: wrpkafka.HashKey{Name: wrpkafka.HashKeySource}},
+				{Topic: testTopicEvents, Pattern: wrpkafka.Pattern(testPatternEvent), HashKey: wrpkafka.HashKey{Name: wrpkafka.HashKeySource}},
 			},
 			description: "Should convert single route correctly",
 		},
@@ -155,14 +164,14 @@ func (suite *ConfigTestSuite) TestConfig_ToWRPKafkaRoutes() {
 			name: "multiple_routes",
 			config: Config{
 				TopicRoutes: []TopicRoute{
-					{Topic: "events", Pattern: "event:.*", HashKey: "source"},
-					{Topic: "commands", Pattern: "mac:.*/command", HashKey: "metadata/hw-deviceid"},
+					{Topic: testTopicEvents, Pattern: testPatternEvent, HashKey: "source"},
+					{Topic: testTopicCommands, Pattern: "mac:.*/command", HashKey: "metadata/" + testMetadataDevice},
 					{Topic: "responses", Pattern: ".*response.*", HashKey: "none"},
 				},
 			},
 			expected: []wrpkafka.TopicRoute{
-				{Topic: "events", Pattern: wrpkafka.Pattern("event:.*"), HashKey: wrpkafka.HashKey{Name: wrpkafka.HashKeySource}},
-				{Topic: "commands", Pattern: wrpkafka.Pattern("mac:.*/command"), HashKey: wrpkafka.HashKey{Name: wrpkafka.HashKeyMetadata, MetadataField: "hw-deviceid"}},
+				{Topic: testTopicEvents, Pattern: wrpkafka.Pattern(testPatternEvent), HashKey: wrpkafka.HashKey{Name: wrpkafka.HashKeySource}},
+				{Topic: testTopicCommands, Pattern: wrpkafka.Pattern("mac:.*/command"), HashKey: wrpkafka.HashKey{Name: wrpkafka.HashKeyMetadata, MetadataField: testMetadataDevice}},
 				{Topic: "responses", Pattern: wrpkafka.Pattern(".*response.*"), HashKey: wrpkafka.HashKey{Name: wrpkafka.HashKeyNone}},
 			},
 			description: "Should convert multiple routes correctly",
@@ -179,7 +188,7 @@ func (suite *ConfigTestSuite) TestConfig_ToWRPKafkaRoutes() {
 			name: "route_with_invalid_hash_key",
 			config: Config{
 				TopicRoutes: []TopicRoute{
-					{Topic: "events", Pattern: "event:.*", HashKey: "invalid"},
+					{Topic: testTopicEvents, Pattern: testPatternEvent, HashKey: "invalid"},
 				},
 			},
 			expectError: true,
@@ -330,15 +339,15 @@ func (suite *OptionsTestSuite) TestOptions() {
 		{
 			name: "WithTopicRoutes_single",
 			option: WithTopicRoutes(wrpkafka.TopicRoute{
-				Topic:   "events",
-				Pattern: "event:.*",
+				Topic:   testTopicEvents,
+				Pattern: testPatternEvent,
 			}),
 			setupPub: func() *KafkaPublisher {
 				return &KafkaPublisher{config: &publisherConfig{}}
 			},
 			verifyPub: func(p *KafkaPublisher) {
 				expected := []wrpkafka.TopicRoute{
-					{Topic: "events", Pattern: "event:.*"},
+					{Topic: testTopicEvents, Pattern: testPatternEvent},
 				}
 				suite.Equal(expected, p.config.topicRoutes)
 			},
@@ -347,16 +356,16 @@ func (suite *OptionsTestSuite) TestOptions() {
 		{
 			name: "WithTopicRoutes_multiple",
 			option: WithTopicRoutes(
-				wrpkafka.TopicRoute{Topic: "events", Pattern: "event:.*"},
-				wrpkafka.TopicRoute{Topic: "commands", Pattern: "mac:.*/command"},
+				wrpkafka.TopicRoute{Topic: testTopicEvents, Pattern: testPatternEvent},
+				wrpkafka.TopicRoute{Topic: testTopicCommands, Pattern: "mac:.*/command"},
 			),
 			setupPub: func() *KafkaPublisher {
 				return &KafkaPublisher{config: &publisherConfig{}}
 			},
 			verifyPub: func(p *KafkaPublisher) {
 				expected := []wrpkafka.TopicRoute{
-					{Topic: "events", Pattern: "event:.*"},
-					{Topic: "commands", Pattern: "mac:.*/command"},
+					{Topic: testTopicEvents, Pattern: testPatternEvent},
+					{Topic: testTopicCommands, Pattern: "mac:.*/command"},
 				}
 				suite.Equal(expected, p.config.topicRoutes)
 			},
@@ -524,7 +533,7 @@ func (suite *OptionsTestSuite) TestOptions() {
 		},
 		{
 			name:   "WithPrometheusConfig_subsystem_only",
-			option: WithPrometheusConfig(&PrometheusConfig{Namespace: "", Subsystem: "kafka"}),
+			option: WithPrometheusConfig(&PrometheusConfig{Namespace: "", Subsystem: testSubsystemKafka}),
 			setupPub: func() *KafkaPublisher {
 				return &KafkaPublisher{config: &publisherConfig{}}
 			},
@@ -560,7 +569,7 @@ func (suite *OptionsTestSuite) TestSASLConfigOptions() {
 		{
 			name: "valid_plain_config",
 			saslConfig: &SASLConfig{
-				Mechanism: "PLAIN",
+				Mechanism: saslMechanismPlain,
 				Username:  "user",
 				Password:  "pass",
 			},
@@ -570,7 +579,7 @@ func (suite *OptionsTestSuite) TestSASLConfigOptions() {
 		{
 			name: "valid_scram256_config",
 			saslConfig: &SASLConfig{
-				Mechanism: "SCRAM-SHA-256",
+				Mechanism: saslMechanismScram256,
 				Username:  "user",
 				Password:  "pass",
 			},
@@ -580,7 +589,7 @@ func (suite *OptionsTestSuite) TestSASLConfigOptions() {
 		{
 			name: "valid_scram512_config",
 			saslConfig: &SASLConfig{
-				Mechanism: "SCRAM-SHA-512",
+				Mechanism: saslMechanismScram512,
 				Username:  "user",
 				Password:  "pass",
 			},
@@ -600,7 +609,7 @@ func (suite *OptionsTestSuite) TestSASLConfigOptions() {
 		{
 			name: "missing_username",
 			saslConfig: &SASLConfig{
-				Mechanism: "PLAIN",
+				Mechanism: saslMechanismPlain,
 				Username:  "",
 				Password:  "pass",
 			},
@@ -610,7 +619,7 @@ func (suite *OptionsTestSuite) TestSASLConfigOptions() {
 		{
 			name: "missing_password",
 			saslConfig: &SASLConfig{
-				Mechanism: "PLAIN",
+				Mechanism: saslMechanismPlain,
 				Username:  "user",
 				Password:  "",
 			},

@@ -16,6 +16,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	testFileOneTxt   = "one.txt"
+	testAsProperties = "properties"
+	testKeyItem1     = "Item1"
+	testKeyItem2     = "Item2"
+	testKeyURL       = "URL"
+	testKeyMissing   = "missing"
+)
+
 type mapping struct {
 	in    string
 	out   string
@@ -26,7 +35,7 @@ func TestExternal_resolve(t *testing.T) {
 	unknownErr := errors.New("unknown error")
 
 	testFs := fstest.MapFS{
-		"one.txt": &fstest.MapFile{
+		testFileOneTxt: &fstest.MapFile{
 			Data: []byte(`
 Device.Some.Thing.Something.Else=red
 Device.Other.Thing.Something.Else=green
@@ -56,21 +65,21 @@ Device.URL=https://fabric.xmidt.example.com
 			description: "most cases for external",
 			in: External{
 				Required: true,
-				File:     "one.txt",
-				As:       "properties",
+				File:     testFileOneTxt,
+				As:       testAsProperties,
 				Remap: []Remap{
 					{
 						From: "Device.Some.Thing.Something.Else",
-						To:   "Item1",
+						To:   testKeyItem1,
 					}, {
 						From: "Device.Other.Thing.Something.Else",
-						To:   "Item2",
+						To:   testKeyItem2,
 					}, {
 						From: "Device.URL",
-						To:   "URL",
+						To:   testKeyURL,
 					}, {
 						From:     "Not.There.But.Optional",
-						To:       "missing",
+						To:       testKeyMissing,
 						Optional: true,
 					},
 				},
@@ -82,19 +91,19 @@ Device.URL=https://fabric.xmidt.example.com
 					out:   "",
 					found: false,
 				}, {
-					in:    "Item1",
+					in:    testKeyItem1,
 					out:   "red",
 					found: true,
 				}, {
-					in:    "Item2",
+					in:    testKeyItem2,
 					out:   "green",
 					found: true,
 				}, {
-					in:    "URL",
+					in:    testKeyURL,
 					out:   "https://fabric.xmidt.example.com",
 					found: true,
 				}, {
-					in:    "missing",
+					in:    testKeyMissing,
 					found: false,
 				},
 			},
@@ -111,12 +120,12 @@ Device.URL=https://fabric.xmidt.example.com
 			expectedErr: unknownErr,
 			in: External{
 				Required: true,
-				File:     "one.txt",
-				As:       "properties",
+				File:     testFileOneTxt,
+				As:       testAsProperties,
 				Remap: []Remap{
 					{
 						From: "Not.There",
-						To:   "Item1",
+						To:   testKeyItem1,
 					},
 				},
 				root: testFs,
@@ -125,19 +134,19 @@ Device.URL=https://fabric.xmidt.example.com
 			description: "invalid remap option",
 			in: External{
 				Required: true,
-				File:     "one.txt",
-				As:       "properties",
+				File:     testFileOneTxt,
+				As:       testAsProperties,
 				Remap: []Remap{
 					{
 						From:     "", // missing/invalid but ok
-						To:       "Item1",
+						To:       testKeyItem1,
 						Optional: true,
 					}, {
 						From: "", // missing/invalid but not ok
-						To:   "Item2",
+						To:   testKeyItem2,
 					}, {
 						From: "Device.URL",
-						To:   "URL",
+						To:   testKeyURL,
 					},
 				},
 				root: testFs,
@@ -197,7 +206,7 @@ func TestExternal_apply(t *testing.T) {
 			),
 			Mode: 0755,
 		},
-		"one.txt": &fstest.MapFile{
+		testFileOneTxt: &fstest.MapFile{
 			Data: []byte(`
 Device.Some.Thing.Something.Else=red
 Device.Other.Thing.Something.Else=green
@@ -217,7 +226,7 @@ Device.URL=https://fabric.xmidt.example.com
 	}{
 		{
 			description: "a missing external, but not required",
-			name:        "missing",
+			name:        testKeyMissing,
 			fs:          testFs,
 		}, {
 			description: "externals are present",
@@ -225,7 +234,7 @@ Device.URL=https://fabric.xmidt.example.com
 			fs:          testFs,
 		}, {
 			description: "a missing external, but required",
-			name:        "missing",
+			name:        testKeyMissing,
 			fs:          testFs,
 			required:    true,
 			expectedErr: unknownErr,

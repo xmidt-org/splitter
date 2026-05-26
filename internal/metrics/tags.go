@@ -9,9 +9,13 @@ const ()
 // errors
 const ()
 
+const (
+	unknownTagValue = "unknown"
+)
+
 func GetUnknownTagIfEmpty(tag string) string {
 	if tag == "" {
-		return "unknown"
+		return unknownTagValue
 	}
 	return tag
 }
