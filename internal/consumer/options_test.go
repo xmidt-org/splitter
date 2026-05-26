@@ -21,6 +21,13 @@ import (
 	"github.com/twmb/franz-go/pkg/kgo"
 )
 
+// Additional test constants (shared constants are in consumer_test.go)
+const (
+	testSASLMechanismPlain = "PLAIN"
+	testTopicGeneric       = "topic"
+	testGroupGeneric       = "group"
+)
+
 type OptionsTestSuite struct {
 	suite.Suite
 }
@@ -33,9 +40,9 @@ func TestOptionsTestSuite(t *testing.T) {
 func (s *OptionsTestSuite) createTestConsumer(opts ...Option) (*KafkaConsumer, error) {
 	// Start with required options
 	baseOpts := make([]Option, 4, 4+len(opts))
-	baseOpts[0] = WithBrokers("localhost:9092")
-	baseOpts[1] = WithTopics("test-topic")
-	baseOpts[2] = WithGroupID("test-group")
+	baseOpts[0] = WithBrokers(testBrokerLocalhost)
+	baseOpts[1] = WithTopics(testTopicName)
+	baseOpts[2] = WithGroupID(testGroupName)
 	baseOpts[3] = WithMessageHandler(MessageHandlerFunc(func(ctx context.Context, record *kgo.Record) (Outcome, error) {
 		return Attempted, nil
 	}))
@@ -95,7 +102,7 @@ func (s *OptionsTestSuite) TestWithBrokers_Multiple() {
 func (s *OptionsTestSuite) TestWithTopics() {
 	consumer, err := s.createTestConsumer()
 	s.NoError(err)
-	s.Equal([]string{"test-topic"}, consumer.config.topics)
+	s.Equal([]string{testTopicName}, consumer.config.topics)
 }
 
 func (s *OptionsTestSuite) TestWithTopics_Multiple() {
@@ -114,7 +121,7 @@ func (s *OptionsTestSuite) TestWithTopics_Multiple() {
 func (s *OptionsTestSuite) TestWithGroupID() {
 	consumer, err := s.createTestConsumer()
 	s.NoError(err)
-	s.Equal("test-group", consumer.config.groupID)
+	s.Equal(testGroupName, consumer.config.groupID)
 }
 
 func (s *OptionsTestSuite) TestWithMessageHandler() {
@@ -279,7 +286,7 @@ func (s *OptionsTestSuite) TestWithAutoCommitInterval() {
 
 func (s *OptionsTestSuite) TestWithSASLPlain() {
 	consumer, err := s.createTestConsumer(
-		WithSASLPlain("user", "password"),
+		WithSASLPlain("user", testPassword),
 	)
 	s.NoError(err)
 	s.NotNil(consumer)
@@ -288,7 +295,7 @@ func (s *OptionsTestSuite) TestWithSASLPlain() {
 
 func (s *OptionsTestSuite) TestWithSASLScram256() {
 	consumer, err := s.createTestConsumer(
-		WithSASLScram256("user", "password"),
+		WithSASLScram256("user", testPassword),
 	)
 	s.NoError(err)
 	s.NotNil(consumer)
@@ -297,7 +304,7 @@ func (s *OptionsTestSuite) TestWithSASLScram256() {
 
 func (s *OptionsTestSuite) TestWithSASLScram512() {
 	consumer, err := s.createTestConsumer(
-		WithSASLScram512("user", "password"),
+		WithSASLScram512("user", testPassword),
 	)
 	s.NoError(err)
 	s.NotNil(consumer)
@@ -316,9 +323,9 @@ func (s *OptionsTestSuite) TestWithSASLConfig_Nil() {
 func (s *OptionsTestSuite) TestWithSASLConfig_PLAIN() {
 	consumer, err := s.createTestConsumer(
 		WithSASLConfig(&SASLConfig{
-			Mechanism: "PLAIN",
+			Mechanism: testSASLMechanismPlain,
 			Username:  "user",
-			Password:  "password",
+			Password:  testPassword,
 		}),
 	)
 	s.NoError(err)
@@ -331,7 +338,7 @@ func (s *OptionsTestSuite) TestWithSASLConfig_SCRAM256() {
 		WithSASLConfig(&SASLConfig{
 			Mechanism: "SCRAM-SHA-256",
 			Username:  "user",
-			Password:  "password",
+			Password:  testPassword,
 		}),
 	)
 	s.NoError(err)
@@ -344,7 +351,7 @@ func (s *OptionsTestSuite) TestWithSASLConfig_SCRAM512() {
 		WithSASLConfig(&SASLConfig{
 			Mechanism: "SCRAM-SHA-512",
 			Username:  "user",
-			Password:  "password",
+			Password:  testPassword,
 		}),
 	)
 	s.NoError(err)
@@ -357,7 +364,7 @@ func (s *OptionsTestSuite) TestWithSASLConfig_InvalidMechanism() {
 		WithSASLConfig(&SASLConfig{
 			Mechanism: "INVALID",
 			Username:  "user",
-			Password:  "password",
+			Password:  testPassword,
 		}),
 	)
 	s.Error(err)
@@ -368,9 +375,9 @@ func (s *OptionsTestSuite) TestWithSASLConfig_InvalidMechanism() {
 func (s *OptionsTestSuite) TestWithSASLConfig_MissingUsername() {
 	consumer, err := s.createTestConsumer(
 		WithSASLConfig(&SASLConfig{
-			Mechanism: "PLAIN",
+			Mechanism: testSASLMechanismPlain,
 			Username:  "",
-			Password:  "password",
+			Password:  testPassword,
 		}),
 	)
 	s.Error(err)
@@ -381,7 +388,7 @@ func (s *OptionsTestSuite) TestWithSASLConfig_MissingUsername() {
 func (s *OptionsTestSuite) TestWithSASLConfig_MissingPassword() {
 	consumer, err := s.createTestConsumer(
 		WithSASLConfig(&SASLConfig{
-			Mechanism: "PLAIN",
+			Mechanism: testSASLMechanismPlain,
 			Username:  "user",
 			Password:  "",
 		}),
@@ -799,8 +806,8 @@ func (s *OptionsTestSuite) TestWithInstanceID_Empty() {
 
 func (s *OptionsTestSuite) TestValidate_MissingBrokers() {
 	cfg := &consumerConfig{
-		topics:  []string{"topic"},
-		groupID: "group",
+		topics:  []string{testTopicGeneric},
+		groupID: testGroupGeneric,
 		handler: MessageHandlerFunc(func(ctx context.Context, record *kgo.Record) (Outcome, error) {
 			return Attempted, nil
 		}),
@@ -813,8 +820,8 @@ func (s *OptionsTestSuite) TestValidate_MissingBrokers() {
 
 func (s *OptionsTestSuite) TestValidate_MissingTopics() {
 	cfg := &consumerConfig{
-		brokers: []string{"localhost:9092"},
-		groupID: "group",
+		brokers: []string{testBrokerLocalhost},
+		groupID: testGroupGeneric,
 		handler: MessageHandlerFunc(func(ctx context.Context, record *kgo.Record) (Outcome, error) {
 			return Attempted, nil
 		}),
@@ -827,8 +834,8 @@ func (s *OptionsTestSuite) TestValidate_MissingTopics() {
 
 func (s *OptionsTestSuite) TestValidate_MissingGroupID() {
 	cfg := &consumerConfig{
-		brokers: []string{"localhost:9092"},
-		topics:  []string{"topic"},
+		brokers: []string{testBrokerLocalhost},
+		topics:  []string{testTopicGeneric},
 		handler: MessageHandlerFunc(func(ctx context.Context, record *kgo.Record) (Outcome, error) {
 			return Attempted, nil
 		}),
@@ -841,9 +848,9 @@ func (s *OptionsTestSuite) TestValidate_MissingGroupID() {
 
 func (s *OptionsTestSuite) TestValidate_MissingHandler() {
 	cfg := &consumerConfig{
-		brokers: []string{"localhost:9092"},
-		topics:  []string{"topic"},
-		groupID: "group",
+		brokers: []string{testBrokerLocalhost},
+		topics:  []string{testTopicGeneric},
+		groupID: testGroupGeneric,
 	}
 
 	err := validate(cfg)
@@ -853,9 +860,9 @@ func (s *OptionsTestSuite) TestValidate_MissingHandler() {
 
 func (s *OptionsTestSuite) TestValidate_Success() {
 	cfg := &consumerConfig{
-		brokers: []string{"localhost:9092"},
-		topics:  []string{"topic"},
-		groupID: "group",
+		brokers: []string{testBrokerLocalhost},
+		topics:  []string{testTopicGeneric},
+		groupID: testGroupGeneric,
 		handler: MessageHandlerFunc(func(ctx context.Context, record *kgo.Record) (Outcome, error) {
 			return Attempted, nil
 		}),

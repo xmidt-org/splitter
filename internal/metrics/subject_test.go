@@ -129,7 +129,7 @@ func TestSubjectNotify(t *testing.T) {
 				counter := &MockCounter{}
 				unknownCounter := &MockCounter{}
 				// Set up expectations for unknown metrics tracking
-				unknownCounter.On("With", []string{MetricNameLabel, "unknown_metric_name", MetricTypeLabel, unknownTagValue}).Return(unknownCounter)
+				unknownCounter.On("With", []string{MetricNameLabel, testUnknownMetricName, MetricTypeLabel, unknownTagValue}).Return(unknownCounter)
 				unknownCounter.On("Add", 1.0).Return()
 
 				mockMetrics := createMinimalMetrics()
@@ -138,7 +138,7 @@ func TestSubjectNotify(t *testing.T) {
 				return mockMetrics, []string{}
 			},
 			event: Event{
-				Name:   "unknown_metric_name",
+				Name:   testUnknownMetricName,
 				Labels: []string{},
 				Value:  10.0,
 			},
@@ -208,7 +208,7 @@ func TestSubjectAsync(t *testing.T) {
 			setupMetrics: func() Metrics {
 				// Set up mock with expectations for async test
 				publisherOutcomes := &MockCounter{}
-				publisherOutcomes.On("With", []string{"test", testAsyncValue}).Return(publisherOutcomes).Maybe()
+				publisherOutcomes.On("With", []string{testLabelTest, testAsyncValue}).Return(publisherOutcomes).Maybe()
 				publisherOutcomes.On("Add", mock.AnythingOfType("float64")).Return().Maybe()
 
 				// Set up panic counter expectations
@@ -235,8 +235,8 @@ func TestSubjectAsync(t *testing.T) {
 				assert.Panics(t, func() {
 					for i := 0; i < tt.eventCount; i++ {
 						go subject.Notify(Event{
-							Name:   "publish_outcomes",
-							Labels: []string{"test", "async"},
+							Name:   PublisherOutcomes,
+							Labels: []string{testLabelTest, testAsyncValue},
 							Value:  float64(i),
 						})
 					}
@@ -246,7 +246,7 @@ func TestSubjectAsync(t *testing.T) {
 					for i := 0; i < tt.eventCount; i++ {
 						go subject.Notify(Event{
 							Name:   PublisherOutcomes,
-							Labels: []string{"test", testAsyncValue},
+							Labels: []string{testLabelTest, testAsyncValue},
 							Value:  float64(i),
 						})
 					}

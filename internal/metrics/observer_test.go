@@ -24,11 +24,11 @@ func TestCounterObserver(t *testing.T) {
 			name: "handle multiple counter events",
 			setupCounters: func() map[string]kit.Counter {
 				counter1 := &MockCounter{}
-				counter1.On("With", []string{testLabel1, "value1"}).Return(counter1)
+				counter1.On("With", []string{testLabel1, testValue1}).Return(counter1)
 				counter1.On("Add", 5.0).Return()
 
 				counter2 := &MockCounter{}
-				counter2.On("With", []string{testLabel2, "value2"}).Return(counter2)
+				counter2.On("With", []string{testLabel2, testValue2}).Return(counter2)
 				counter2.On("Add", 10.0).Return()
 
 				return map[string]kit.Counter{
@@ -37,9 +37,9 @@ func TestCounterObserver(t *testing.T) {
 				}
 			},
 			events: []Event{
-				{Name: "test_counter_1", Labels: []string{testLabel1, "value1"}, Value: 5.0},
-				{Name: "test_counter_2", Labels: []string{testLabel2, "value2"}, Value: 10.0},
-				{Name: "unknown_counter", Labels: []string{testLabel3, "value3"}, Value: 15.0},
+				{Name: "test_counter_1", Labels: []string{testLabel1, testValue1}, Value: 5.0},
+				{Name: "test_counter_2", Labels: []string{testLabel2, testValue2}, Value: 10.0},
+				{Name: "unknown_counter", Labels: []string{testLabel3, testValue3}, Value: 15.0},
 			},
 			verifyMocks: true,
 		},
@@ -69,7 +69,7 @@ func TestCounterObserver(t *testing.T) {
 			name: "recover from panic gracefully",
 			setupCounters: func() map[string]kit.Counter {
 				counter := &MockCounter{}
-				counter.On("With", []string{testLabel1, "value1"}).Return(counter)
+				counter.On("With", []string{testLabel1, testValue1}).Return(counter)
 				counter.On("Add", 5.0).Run(func(args mock.Arguments) {
 					panic("test panic")
 				})
@@ -78,7 +78,7 @@ func TestCounterObserver(t *testing.T) {
 				}
 			},
 			events: []Event{
-				{Name: testCounterName, Labels: []string{testLabel1, "value1"}, Value: 5.0},
+				{Name: testCounterName, Labels: []string{testLabel1, testValue1}, Value: 5.0},
 			},
 			expectPanic: false,
 			verifyMocks: true,
@@ -129,11 +129,11 @@ func TestGaugeObserver(t *testing.T) {
 			name: "handle multiple gauge events",
 			setupGauges: func() map[string]kit.Gauge {
 				gauge1 := &MockGauge{}
-				gauge1.On("With", []string{testLabel1, "value1"}).Return(gauge1)
+				gauge1.On("With", []string{testLabel1, testValue1}).Return(gauge1)
 				gauge1.On("Set", 42.5).Return()
 
 				gauge2 := &MockGauge{}
-				gauge2.On("With", []string{testLabel2, "value2"}).Return(gauge2)
+				gauge2.On("With", []string{testLabel2, testValue2}).Return(gauge2)
 				gauge2.On("Set", 100.0).Return()
 
 				return map[string]kit.Gauge{
@@ -142,9 +142,9 @@ func TestGaugeObserver(t *testing.T) {
 				}
 			},
 			events: []Event{
-				{Name: "test_gauge_1", Labels: []string{testLabel1, "value1"}, Value: 42.5},
-				{Name: "test_gauge_2", Labels: []string{testLabel2, "value2"}, Value: 100.0},
-				{Name: "unknown_gauge", Labels: []string{testLabel3, "value3"}, Value: 200.0},
+				{Name: "test_gauge_1", Labels: []string{testLabel1, testValue1}, Value: 42.5},
+				{Name: "test_gauge_2", Labels: []string{testLabel2, testValue2}, Value: 100.0},
+				{Name: "unknown_gauge", Labels: []string{testLabel3, testValue3}, Value: 200.0},
 			},
 			verifyMocks: true,
 		},
@@ -202,11 +202,11 @@ func TestHistogramObserver(t *testing.T) {
 			name: "handle multiple histogram events",
 			setupHistograms: func() map[string]kit.Histogram {
 				histogram1 := &MockHistogram{}
-				histogram1.On("With", []string{testLabel1, "value1"}).Return(histogram1)
+				histogram1.On("With", []string{testLabel1, testValue1}).Return(histogram1)
 				histogram1.On("Observe", 0.125).Return()
 
 				histogram2 := &MockHistogram{}
-				histogram2.On("With", []string{testLabel2, "value2"}).Return(histogram2)
+				histogram2.On("With", []string{testLabel2, testValue2}).Return(histogram2)
 				histogram2.On("Observe", 0.250).Return()
 
 				return map[string]kit.Histogram{
@@ -215,9 +215,9 @@ func TestHistogramObserver(t *testing.T) {
 				}
 			},
 			events: []Event{
-				{Name: "test_histogram_1", Labels: []string{testLabel1, "value1"}, Value: 0.125},
-				{Name: "test_histogram_2", Labels: []string{testLabel2, "value2"}, Value: 0.250},
-				{Name: "unknown_histogram", Labels: []string{testLabel3, "value3"}, Value: 0.500},
+				{Name: "test_histogram_1", Labels: []string{testLabel1, testValue1}, Value: 0.125},
+				{Name: "test_histogram_2", Labels: []string{testLabel2, testValue2}, Value: 0.250},
+				{Name: "unknown_histogram", Labels: []string{testLabel3, testValue3}, Value: 0.500},
 			},
 			verifyMocks: true,
 		},
@@ -320,7 +320,7 @@ func TestSubjectUnknownMetrics(t *testing.T) {
 			// Set up expectations for unknown metric calls
 			for _, call := range tt.expectedCalls {
 				unknownCounter.On("With",
-					[]string{"metric_name", call.metricName, "metric_type", call.metricType}).Return(unknownCounter)
+					[]string{MetricNameLabel, call.metricName, MetricTypeLabel, call.metricType}).Return(unknownCounter)
 				unknownCounter.On("Add", 1.0).Return()
 			}
 
@@ -399,7 +399,7 @@ func TestSubjectUnknownMetricsNil(t *testing.T) {
 func TestObserverReturnValues(t *testing.T) {
 	t.Run("counter observer returns true when metric exists", func(t *testing.T) {
 		counter := &MockCounter{}
-		counter.On("With", []string{testLabel1, "value1"}).Return(counter)
+		counter.On("With", []string{testLabel1, testValue1}).Return(counter)
 		counter.On("Add", 5.0).Return()
 
 		counters := map[string]kit.Counter{
@@ -409,7 +409,7 @@ func TestObserverReturnValues(t *testing.T) {
 
 		handled := observer.HandleEvent(Event{
 			Name:   testCounterName,
-			Labels: []string{testLabel1, "value1"},
+			Labels: []string{testLabel1, testValue1},
 			Value:  5.0,
 		})
 
@@ -477,7 +477,7 @@ func TestObserverPanicTracking(t *testing.T) {
 		panicCounter.On("Add", 1.0).Return()
 
 		counter := &MockCounter{}
-		counter.On("With", []string{testLabel1, "value1"}).Return(counter)
+		counter.On("With", []string{testLabel1, testValue1}).Return(counter)
 		counter.On("Add", 5.0).Run(func(args mock.Arguments) {
 			panic("test panic")
 		})
@@ -489,7 +489,7 @@ func TestObserverPanicTracking(t *testing.T) {
 
 		handled := observer.HandleEvent(Event{
 			Name:   testCounterName,
-			Labels: []string{testLabel1, "value1"},
+			Labels: []string{testLabel1, testValue1},
 			Value:  5.0,
 		})
 
@@ -500,7 +500,7 @@ func TestObserverPanicTracking(t *testing.T) {
 
 	t.Run("gauge observer tracks panics", func(t *testing.T) {
 		panicCounter := &MockCounter{}
-		panicCounter.On("With", []string{"metric_name", "test_gauge", "metric_type", "gauge"}).Return(panicCounter)
+		panicCounter.On("With", []string{MetricNameLabel, testGaugeName, MetricTypeLabel, "gauge"}).Return(panicCounter)
 		panicCounter.On("Add", 1.0).Return()
 
 		gauge := &MockGauge{}
@@ -510,12 +510,12 @@ func TestObserverPanicTracking(t *testing.T) {
 		})
 
 		gauges := map[string]kit.Gauge{
-			"test_gauge": gauge,
+			testGaugeName: gauge,
 		}
 		observer := NewGaugeObserver(gauges, panicCounter)
 
 		handled := observer.HandleEvent(Event{
-			Name:   "test_gauge",
+			Name:   testGaugeName,
 			Labels: []string{},
 			Value:  42.0,
 		})
@@ -527,7 +527,7 @@ func TestObserverPanicTracking(t *testing.T) {
 
 	t.Run("histogram observer tracks panics", func(t *testing.T) {
 		panicCounter := &MockCounter{}
-		panicCounter.On("With", []string{"metric_name", "test_histogram", "metric_type", "histogram"}).Return(panicCounter)
+		panicCounter.On("With", []string{MetricNameLabel, testHistogramName, MetricTypeLabel, "histogram"}).Return(panicCounter)
 		panicCounter.On("Add", 1.0).Return()
 
 		histogram := &MockHistogram{}
@@ -537,12 +537,12 @@ func TestObserverPanicTracking(t *testing.T) {
 		})
 
 		histograms := map[string]kit.Histogram{
-			"test_histogram": histogram,
+			testHistogramName: histogram,
 		}
 		observer := NewHistogramObserver(histograms, panicCounter)
 
 		handled := observer.HandleEvent(Event{
-			Name:   "test_histogram",
+			Name:   testHistogramName,
 			Labels: []string{},
 			Value:  0.123,
 		})

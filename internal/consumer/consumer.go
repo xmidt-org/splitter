@@ -27,6 +27,15 @@ var ErrPingingBroker = errors.New("error pinging kafka broker")
 
 var tickerInterval = 5 * time.Second
 
+// Log attribute key constants
+const (
+	errorKey     = "error"
+	topicsKey    = "topics"
+	panicKey     = "panic"
+	topicKey     = "topic"
+	partitionKey = "partition"
+)
+
 // Consumer represents a high-throughput Kafka consumer using franz-go.
 
 type Consumer interface {
@@ -111,7 +120,7 @@ func New(opts ...Option) (Consumer, error) {
 					Value: 1,
 				})
 				consumer.emitLog(log.LevelError, "offset commit error", map[string]any{
-					"error": err,
+					errorKey: err,
 				})
 			}
 		}),
@@ -145,13 +154,13 @@ func (c *KafkaConsumer) Start() error {
 	// Ping Kafka to ensure connectivity
 	if err := c.client.Ping(c.ctx); err != nil {
 		c.emitLog(log.LevelError, "failed to start consumer", map[string]any{
-			"error": err,
+			errorKey: err,
 		})
 		return fmt.Errorf("failed to ping kafka brokers: %s, %w", err.Error(), ErrPingingBroker)
 	}
 
 	c.emitLog(log.LevelInfo, "consumer started", map[string]any{
-		"topics":   c.config.topics,
+		topicsKey:  c.config.topics,
 		"group_id": c.config.groupID,
 	})
 
@@ -185,7 +194,7 @@ func (c *KafkaConsumer) Stop(ctx context.Context) error {
 	c.mu.Unlock()
 
 	c.emitLog(log.LevelInfo, "stopping consumer", map[string]any{
-		"topics":   c.config.topics,
+		topicsKey:  c.config.topics,
 		"group_id": c.config.groupID,
 	})
 
@@ -206,7 +215,7 @@ func (c *KafkaConsumer) Stop(ctx context.Context) error {
 	case <-ctx.Done():
 		// Timeout exceeded, force close
 		c.emitLog(log.LevelWarn, "consumer shutdown timeout exceeded", map[string]any{
-			"error": ctx.Err(),
+			errorKey: ctx.Err(),
 		})
 		return fmt.Errorf("shutdown timeout exceeded: %w", ctx.Err())
 	}
@@ -233,7 +242,7 @@ func (c *KafkaConsumer) pollLoop() {
 	defer func() {
 		if r := recover(); r != nil {
 			c.emitLog(log.LevelError, "PANIC in consumer poll loop - consumer stopped", map[string]any{
-				"panic": r,
+				panicKey: r,
 			})
 			c.metricEmitter.Notify(metrics.Event{
 				Name: metrics.Panics,
@@ -269,9 +278,9 @@ func (c *KafkaConsumer) pollLoop() {
 		if errs := fetches.Errors(); len(errs) > 0 {
 			for _, err := range errs {
 				c.emitLog(log.LevelError, "kafka fetch error", map[string]any{
-					"error":     err.Err,
-					"topic":     err.Topic,
-					"partition": err.Partition,
+					errorKey:     err.Err,
+					topicKey:     err.Topic,
+					partitionKey: err.Partition,
 				})
 				c.metricEmitter.Notify(metrics.Event{
 					Name: metrics.ConsumerFetchErrors,
@@ -291,10 +300,10 @@ func (c *KafkaConsumer) pollLoop() {
 			defer func() {
 				if r := recover(); r != nil {
 					c.emitLog(log.LevelError, "PANIC while processing message", map[string]any{
-						"panic":     r,
-						"topic":     record.Topic,
-						"partition": record.Partition,
-						"offset":    record.Offset,
+						panicKey:     r,
+						topicKey:     record.Topic,
+						partitionKey: record.Partition,
+						"offset":     record.Offset,
 					})
 					c.metricEmitter.Notify(metrics.Event{
 						Name: metrics.Panics,
@@ -316,10 +325,10 @@ func (c *KafkaConsumer) pollLoop() {
 			var outcome Outcome
 			if outcome, err = c.handleRecord(record); err != nil {
 				c.emitLog(log.LevelError, "message handling error", map[string]any{
-					"error":     err,
-					"topic":     record.Topic,
-					"partition": record.Partition,
-					"offset":    record.Offset,
+					errorKey:     err,
+					topicKey:     record.Topic,
+					partitionKey: record.Partition,
+					"offset":     record.Offset,
 				})
 			}
 			c.handleOutcome(outcome, err, record)
@@ -384,8 +393,8 @@ func (c *KafkaConsumer) handleRetryableError(err error) {
 	if isRetryable(err) {
 		c.consecutiveFailures.Add(1)
 		c.emitLog(log.LevelWarn, "retryable error from producer", map[string]any{
-			"error": err,
-			"count": c.consecutiveFailures.Load(),
+			errorKey: err,
+			"count":  c.consecutiveFailures.Load(),
 		})
 	}
 }
@@ -397,7 +406,7 @@ func (c *KafkaConsumer) startManageFetchState() {
 	defer func() {
 		if r := recover(); r != nil {
 			c.emitLog(log.LevelError, "PANIC in fetch state manager - manager stopped", map[string]any{
-				"panic": r,
+				panicKey: r,
 			})
 			c.metricEmitter.Notify(metrics.Event{
 				Name: metrics.Panics,
@@ -490,14 +499,14 @@ func (c *KafkaConsumer) handleRecord(record *kgo.Record) (Outcome, error) {
 func (c *KafkaConsumer) HandlePublishEvent(event *wrpkafka.PublishEvent) {
 	if event.Error != nil {
 		c.emitLog(log.LevelError, "message publish error", map[string]any{
-			"topic":     event.Topic,
-			"error":     event.Error,
+			topicKey:    event.Topic,
+			errorKey:    event.Error,
 			"errorType": event.ErrorType,
 		})
 	} else {
 		c.emitLog(log.LevelDebug, "message published successfully", map[string]any{
-			"topic": event.Topic,
-			"qos":   event.EventType,
+			topicKey: event.Topic,
+			"qos":    event.EventType,
 		})
 	}
 

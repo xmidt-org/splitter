@@ -19,6 +19,18 @@ import (
 	"github.com/xmidt-org/wrpkafka"
 )
 
+// Test constants shared across consumer tests
+const (
+	testBrokerLocalhost = "localhost:9092"
+	testTopicName       = "test-topic"
+	testGroupName       = "test-group"
+	testTopicSingle     = "topic"
+	testTopicTest       = "test"
+	testTopicsKey       = "topics"
+	testPassword        = "password"
+	testGroupErrorMsg   = "group"
+)
+
 // ConsumerTestSuite is the test suite for Consumer functionality
 type ConsumerTestSuite struct {
 	suite.Suite
@@ -40,9 +52,9 @@ func (s *ConsumerTestSuite) SetupTest() {
 		client:  s.mockClient,
 		handler: &MockHandler{},
 		config: &consumerConfig{
-			brokers: []string{"localhost:9092"},
-			topics:  []string{"test-topic"},
-			groupID: "test-group",
+			brokers: []string{testBrokerLocalhost},
+			topics:  []string{testTopicName},
+			groupID: testGroupName,
 		},
 		logEmitter:                  log.NewNoop(),
 		metricEmitter:               metrics.NewNoop(),
@@ -64,9 +76,9 @@ func GetConsumer() *KafkaConsumer {
 		client:  mockClient,
 		handler: &MockHandler{},
 		config: &consumerConfig{
-			brokers: []string{"localhost:9092"},
-			topics:  []string{"test-topic"},
-			groupID: "test-group",
+			brokers: []string{testBrokerLocalhost},
+			topics:  []string{testTopicName},
+			groupID: testGroupName,
 		},
 		logEmitter:                  log.NewNoop(),
 		metricEmitter:               metrics.NewNoop(),
@@ -96,9 +108,9 @@ func (s *ConsumerTestSuite) TestNew() {
 		{
 			name: "valid consumer with all required options",
 			opts: []Option{
-				WithBrokers("localhost:9092"),
+				WithBrokers(testBrokerLocalhost),
 				WithTopics("topic1", "topic2"),
-				WithGroupID("test-group"),
+				WithGroupID(testGroupName),
 				WithMessageHandler(&MockHandler{}),
 			},
 			expectError: false,
@@ -107,7 +119,7 @@ func (s *ConsumerTestSuite) TestNew() {
 			name: "missing brokers",
 			opts: []Option{
 				WithTopics("topic1"),
-				WithGroupID("test-group"),
+				WithGroupID(testGroupName),
 				WithMessageHandler(&MockHandler{}),
 			},
 			expectError: true,
@@ -116,29 +128,29 @@ func (s *ConsumerTestSuite) TestNew() {
 		{
 			name: "missing topics",
 			opts: []Option{
-				WithBrokers("localhost:9092"),
-				WithGroupID("test-group"),
+				WithBrokers(testBrokerLocalhost),
+				WithGroupID(testGroupName),
 				WithMessageHandler(&MockHandler{}),
 			},
 			expectError: true,
-			errorMsg:    "topics",
+			errorMsg:    testTopicsKey,
 		},
 		{
 			name: "missing group ID",
 			opts: []Option{
-				WithBrokers("localhost:9092"),
+				WithBrokers(testBrokerLocalhost),
 				WithTopics("topic1"),
 				WithMessageHandler(&MockHandler{}),
 			},
 			expectError: true,
-			errorMsg:    "group",
+			errorMsg:    testGroupErrorMsg,
 		},
 		{
 			name: "missing handler",
 			opts: []Option{
-				WithBrokers("localhost:9092"),
+				WithBrokers(testBrokerLocalhost),
 				WithTopics("topic1"),
-				WithGroupID("test-group"),
+				WithGroupID(testGroupName),
 			},
 			expectError: true,
 			errorMsg:    "handler",
@@ -303,7 +315,7 @@ func (s *ConsumerTestSuite) TestStop() {
 // TestHandleOutcome tests offset commit logic based on different outcomes
 func (s *ConsumerTestSuite) TestHandleOutcome() {
 	record := &kgo.Record{
-		Topic:     "test-topic",
+		Topic:     testTopicName,
 		Partition: 0,
 		Offset:    100,
 	}
@@ -612,7 +624,7 @@ func (s *ConsumerTestSuite) TestHandlePublishEvent() {
 		{
 			name: "successful publish",
 			event: &wrpkafka.PublishEvent{
-				Topic: "test-topic",
+				Topic: testTopicName,
 				Error: nil,
 			},
 			expectSuccess:            true,
@@ -621,7 +633,7 @@ func (s *ConsumerTestSuite) TestHandlePublishEvent() {
 		{
 			name: "failed publish with permanent error",
 			event: &wrpkafka.PublishEvent{
-				Topic: "test-topic",
+				Topic: testTopicName,
 				Error: errors.New("permanent error"),
 			},
 			expectSuccess:            false,
@@ -630,7 +642,7 @@ func (s *ConsumerTestSuite) TestHandlePublishEvent() {
 		{
 			name: "failed publish with retryable error",
 			event: &wrpkafka.PublishEvent{
-				Topic: "test-topic",
+				Topic: testTopicName,
 				Error: kerr.RequestTimedOut,
 			},
 			expectSuccess:            false,
@@ -705,8 +717,8 @@ func (s *ConsumerTestSuite) TestPollLoop() {
 				m.On("PollFetches", mock.Anything).Return(mf)
 				mf.On("EachRecord", mock.Anything).Run(func(args mock.Arguments) {
 					fn := args.Get(0).(func(*kgo.Record))
-					rec1 := &kgo.Record{Topic: "test", Partition: 0, Offset: 0}
-					rec2 := &kgo.Record{Topic: "test", Partition: 0, Offset: 1}
+					rec1 := &kgo.Record{Topic: testTopicTest, Partition: 0, Offset: 0}
+					rec2 := &kgo.Record{Topic: testTopicTest, Partition: 0, Offset: 1}
 					mh.On("HandleMessage", mock.Anything, rec1).Return(Accepted, nil).Once()
 					mh.On("HandleMessage", mock.Anything, rec2).Return(Accepted, nil).Once()
 					fn(rec1)
@@ -861,10 +873,8 @@ func (s *ConsumerTestSuite) TestMessageProcessingPanic() {
 
 				mf.On("EachRecord", mock.Anything).Run(func(args mock.Arguments) {
 					fn := args.Get(0).(func(*kgo.Record))
-					rec1 := &kgo.Record{Topic: "test", Partition: 0, Offset: 0}
-					rec2 := &kgo.Record{Topic: "test", Partition: 0, Offset: 1}
-
-					// First record causes panic in handler
+					rec1 := &kgo.Record{Topic: testTopicTest, Partition: 0, Offset: 0}
+					rec2 := &kgo.Record{Topic: testTopicTest, Partition: 0, Offset: 1}
 					mh.On("HandleMessage", mock.Anything, rec1).Run(func(args mock.Arguments) {
 						panic("handler panic")
 					}).Return(Failed, errors.New("not reached")).Once()
@@ -900,12 +910,14 @@ func (s *ConsumerTestSuite) TestMessageProcessingPanic() {
 
 				mf.On("EachRecord", mock.Anything).Run(func(args mock.Arguments) {
 					fn := args.Get(0).(func(*kgo.Record))
-					rec := &kgo.Record{Topic: "test", Partition: 0, Offset: 0}
+					rec := &kgo.Record{Topic: testTopicTest, Partition: 0, Offset: 0}
 					mh.On("HandleMessage", mock.Anything, rec).Return(Accepted, nil).Once()
-					fn(rec) // Should panic during commit and recover
-				})
+					fn(rec)
+				}).Once()
 			},
-			expectContinue: true,
+			expectContinue:      true,
+			commitCalledForRec1: false,
+			commitCalledForRec2: false,
 		},
 	}
 
@@ -1035,12 +1047,11 @@ func (s *ConsumerTestSuite) TestPanicRecoveryDoesNotCommitRecord() {
 		mockClient.On("PollFetches", mock.Anything).Return(mf).Once()
 		mockClient.On("PollFetches", mock.Anything).Return(emptyFetches).Maybe()
 
-		rec1 := &kgo.Record{Topic: "test", Partition: 0, Offset: 100}
-		rec2 := &kgo.Record{Topic: "test", Partition: 0, Offset: 101}
-		rec3 := &kgo.Record{Topic: "test", Partition: 0, Offset: 102}
-
 		mf.On("EachRecord", mock.Anything).Run(func(args mock.Arguments) {
 			fn := args.Get(0).(func(*kgo.Record))
+			rec1 := &kgo.Record{Topic: testTopicTest, Partition: 0, Offset: 100}
+			rec2 := &kgo.Record{Topic: testTopicTest, Partition: 0, Offset: 101}
+			rec3 := &kgo.Record{Topic: testTopicTest, Partition: 0, Offset: 102}
 
 			// Record 1: success
 			mh.On("HandleMessage", mock.Anything, rec1).Return(Accepted, nil).Once()
@@ -1055,7 +1066,9 @@ func (s *ConsumerTestSuite) TestPanicRecoveryDoesNotCommitRecord() {
 			// Record 3: success
 			mh.On("HandleMessage", mock.Anything, rec3).Return(Accepted, nil).Once()
 			fn(rec3)
-		})
+		}).Once()
+
+		consumer.running = true
 
 		done := make(chan struct{})
 		consumer.wg.Add(1)

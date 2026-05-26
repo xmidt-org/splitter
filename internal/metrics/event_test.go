@@ -30,11 +30,11 @@ func (s *EventTestSuite) TestEvent_Creation() {
 			name: "event with all fields",
 			event: Event{
 				Name:   "test_metric",
-				Labels: []string{testLabel1, "value1", "label2", "value2"},
+				Labels: []string{testLabel1, testValue1, "label2", "value2"},
 				Value:  42.5,
 			},
 			expectedName:   "test_metric",
-			expectedLabels: []string{testLabel1, "value1", "label2", "value2"},
+			expectedLabels: []string{testLabel1, testValue1, "label2", "value2"},
 			expectedValue:  42.5,
 		},
 		{

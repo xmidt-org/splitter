@@ -59,7 +59,7 @@ func (s *BucketsSuite) TestNewBuckets_InvalidTarget() {
 
 func (s *BucketsSuite) TestNewBuckets_InvalidKeyType() {
 	cfg := Config{
-		TargetBucket:     "bucketA",
+		TargetBucket:     testBucketA,
 		PossibleBuckets:  s.bucketDefs,
 		PartitionKeyType: "unknown_key",
 	}
@@ -129,7 +129,7 @@ func (s *BucketsSuite) TestIsInBucketHardcodedValue_False() {
 	s.bucketDefs = TestBuckets
 
 	cfg := Config{
-		TargetBucket:    "bucketA",
+		TargetBucket:    testBucketA,
 		PossibleBuckets: s.bucketDefs,
 	}
 	var err error
@@ -153,7 +153,7 @@ func (s *BucketsSuite) TestIsInBucket_NoPartitionKey_Drop() {
 	s.bucketDefs = TestBuckets
 
 	cfg := Config{
-		TargetBucket:              "bucketA",
+		TargetBucket:              testBucketA,
 		PossibleBuckets:           s.bucketDefs,
 		MissingPartitionKeyAction: "drop",
 	}
@@ -187,7 +187,7 @@ func (s *BucketsSuite) TestGetMissingPartitionKeyAction_Invalid() {
 
 func (s *BucketsSuite) TestNewBuckets_InvalidMissingParitionKeyAction() {
 	cfg := Config{
-		TargetBucket:              "bucketA",
+		TargetBucket:              testBucketA,
 		PossibleBuckets:           s.bucketDefs,
 		MissingPartitionKeyAction: "invalid_action",
 	}

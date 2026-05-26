@@ -114,7 +114,7 @@ func (h *WRPMessageHandler) HandleMessage(ctx context.Context, record *kgo.Recor
 
 		// Log the error and the malformed message
 		h.emitLog(log.LevelWarn, "decode WRP message", map[string]any{
-			"error": err.Error(),
+			errorKey: err.Error(),
 		})
 		h.emitLog(log.LevelDebug, "malformed WRP message", map[string]any{
 			"message": string(record.Value),
@@ -144,7 +144,7 @@ func (h *WRPMessageHandler) HandleMessage(ctx context.Context, record *kgo.Recor
 	inTargetBucket, err := h.buckets.IsInTargetBucket(&msg)
 	if err != nil {
 		h.emitLog(log.LevelError, "failed to parse bucket key", map[string]any{
-			"error": err.Error(),
+			errorKey: err.Error(),
 		})
 		h.metricEmitter.Notify(metrics.Event{
 			Name: metrics.BucketKeyErrorCount,
@@ -169,7 +169,7 @@ func (h *WRPMessageHandler) HandleMessage(ctx context.Context, record *kgo.Recor
 	outcome, err := h.producer.Produce(ctx, &msg)
 	if err != nil {
 		h.emitLog(log.LevelError, "failed to produce WRP message", map[string]any{
-			"error": err.Error(),
+			errorKey: err.Error(),
 		})
 		return getOutcome(outcome), fmt.Errorf("produce failed: %w", err)
 	}

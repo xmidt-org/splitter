@@ -12,37 +12,49 @@ import (
 	"github.com/xmidt-org/wrpkafka"
 )
 
+// Test constants
+const (
+	testTopicEvents       = "events"
+	testTopicCommands     = "commands"
+	testPatternEvent      = "event:.*"
+	testMetadataDevice    = "hw-deviceid"
+	testSubsystemKafka    = "kafka"
+	testDeviceSource      = "dns:webpa-server.example.com/api/v2/device"
+	testRegionUSEast1     = "us-east-1"
+	testBrokerLocal       = "localhost:9092"
+	testHashKeySource     = "source"
+	testPatternMAC        = "mac:.*/command"
+	testHashKeyNone       = "none"
+	testTopicTest         = "test"
+	testSubsystemSplitter = "splitter"
+	testNamespaceMonitor  = "monitoring"
+	testUsername          = "user"
+	testPassword          = "pass"
+	testDeviceConfig      = "mac:112233445566/config"
+)
+
 var testBroker = Brokers{
 	RestartOnConfigChange: false,
-	TargetRegion:          "us-east-1",
+	TargetRegion:          testRegionUSEast1,
 	Regions: map[string][]string{
-		"us-east-1": {"localhost:9092"},
+		testRegionUSEast1: {testBrokerLocal},
 	},
 }
 
 var multiBroker = Brokers{
 	RestartOnConfigChange: false,
-	TargetRegion:          "us-east-1",
+	TargetRegion:          testRegionUSEast1,
 	Regions: map[string][]string{
-		"us-east-1": {"localhost:9092", "localhost:9093", "localhost:9094"},
-		"us-west-2": {"localhost:9095"},
+		testRegionUSEast1: {testBrokerLocal, "localhost:9093", "localhost:9094"},
+		"us-west-2":       {"localhost:9095"},
 	},
 }
 
 var emptyBroker = Brokers{
 	RestartOnConfigChange: false,
-	TargetRegion:          "us-east-1",
+	TargetRegion:          testRegionUSEast1,
 	Regions:               map[string][]string{},
 }
-
-const (
-	testTopicEvents    = "events"
-	testTopicCommands  = "commands"
-	testPatternEvent   = "event:.*"
-	testMetadataDevice = "hw-deviceid"
-	testSubsystemKafka = "kafka"
-	testDeviceSource   = "dns:webpa-server.example.com/api/v2/device"
-)
 
 // Test suite for Config
 type ConfigTestSuite struct {
@@ -63,7 +75,7 @@ func (suite *ConfigTestSuite) TestTopicRoute_ToWRPKafkaRoute() {
 			topicRoute: TopicRoute{
 				Topic:   testTopicEvents,
 				Pattern: testPatternEvent,
-				HashKey: "source",
+				HashKey: testHashKeySource,
 			},
 			expected: wrpkafka.TopicRoute{
 				Topic:   testTopicEvents,
@@ -76,12 +88,12 @@ func (suite *ConfigTestSuite) TestTopicRoute_ToWRPKafkaRoute() {
 			name: "command_route",
 			topicRoute: TopicRoute{
 				Topic:   testTopicCommands,
-				Pattern: "mac:.*/command",
+				Pattern: testPatternMAC,
 				HashKey: "metadata/" + testMetadataDevice,
 			},
 			expected: wrpkafka.TopicRoute{
 				Topic:   testTopicCommands,
-				Pattern: wrpkafka.Pattern("mac:.*/command"),
+				Pattern: wrpkafka.Pattern(testPatternMAC),
 				HashKey: wrpkafka.HashKey{Name: wrpkafka.HashKeyMetadata, MetadataField: testMetadataDevice},
 			},
 			description: "Should handle complex routing patterns with metadata hash key",
@@ -91,7 +103,7 @@ func (suite *ConfigTestSuite) TestTopicRoute_ToWRPKafkaRoute() {
 			topicRoute: TopicRoute{
 				Topic:   "all-messages",
 				Pattern: ".*",
-				HashKey: "none",
+				HashKey: testHashKeyNone,
 			},
 			expected: wrpkafka.TopicRoute{
 				Topic:   "all-messages",
@@ -152,7 +164,7 @@ func (suite *ConfigTestSuite) TestConfig_ToWRPKafkaRoutes() {
 			name: "single_route",
 			config: Config{
 				TopicRoutes: []TopicRoute{
-					{Topic: testTopicEvents, Pattern: testPatternEvent, HashKey: "source"},
+					{Topic: testTopicEvents, Pattern: testPatternEvent, HashKey: testHashKeySource},
 				},
 			},
 			expected: []wrpkafka.TopicRoute{
@@ -164,14 +176,14 @@ func (suite *ConfigTestSuite) TestConfig_ToWRPKafkaRoutes() {
 			name: "multiple_routes",
 			config: Config{
 				TopicRoutes: []TopicRoute{
-					{Topic: testTopicEvents, Pattern: testPatternEvent, HashKey: "source"},
-					{Topic: testTopicCommands, Pattern: "mac:.*/command", HashKey: "metadata/" + testMetadataDevice},
-					{Topic: "responses", Pattern: ".*response.*", HashKey: "none"},
+					{Topic: testTopicEvents, Pattern: testPatternEvent, HashKey: testHashKeySource},
+					{Topic: testTopicCommands, Pattern: testPatternMAC, HashKey: "metadata/" + testMetadataDevice},
+					{Topic: "responses", Pattern: ".*response.*", HashKey: testHashKeyNone},
 				},
 			},
 			expected: []wrpkafka.TopicRoute{
 				{Topic: testTopicEvents, Pattern: wrpkafka.Pattern(testPatternEvent), HashKey: wrpkafka.HashKey{Name: wrpkafka.HashKeySource}},
-				{Topic: testTopicCommands, Pattern: wrpkafka.Pattern("mac:.*/command"), HashKey: wrpkafka.HashKey{Name: wrpkafka.HashKeyMetadata, MetadataField: testMetadataDevice}},
+				{Topic: testTopicCommands, Pattern: wrpkafka.Pattern(testPatternMAC), HashKey: wrpkafka.HashKey{Name: wrpkafka.HashKeyMetadata, MetadataField: testMetadataDevice}},
 				{Topic: "responses", Pattern: wrpkafka.Pattern(".*response.*"), HashKey: wrpkafka.HashKey{Name: wrpkafka.HashKeyNone}},
 			},
 			description: "Should convert multiple routes correctly",
@@ -233,7 +245,7 @@ func (suite *OptionsTestSuite) TestPublisherConfig_Validate() {
 			config: &publisherConfig{
 				brokers: testBroker,
 				topicRoutes: []wrpkafka.TopicRoute{
-					{Topic: "test", Pattern: ".*"},
+					{Topic: testTopicTest, Pattern: ".*"},
 				},
 			},
 			expectError: false,
@@ -244,7 +256,7 @@ func (suite *OptionsTestSuite) TestPublisherConfig_Validate() {
 			config: &publisherConfig{
 				brokers: emptyBroker,
 				topicRoutes: []wrpkafka.TopicRoute{
-					{Topic: "test", Pattern: ".*"},
+					{Topic: testTopicTest, Pattern: ".*"},
 				},
 			},
 			expectError: true,
@@ -257,11 +269,11 @@ func (suite *OptionsTestSuite) TestPublisherConfig_Validate() {
 					RestartOnConfigChange: false,
 					TargetRegion:          "nonexistent-region",
 					Regions: map[string][]string{
-						"us-east-1": {"localhost:9092"},
+						testRegionUSEast1: {testBrokerLocal},
 					},
 				},
 				topicRoutes: []wrpkafka.TopicRoute{
-					{Topic: "test", Pattern: ".*"},
+					{Topic: testTopicTest, Pattern: ".*"},
 				},
 			},
 			expectError: true,
@@ -494,14 +506,14 @@ func (suite *OptionsTestSuite) TestOptions() {
 		},
 		{
 			name:   "WithPrometheusConfig_both_values",
-			option: WithPrometheusConfig(&PrometheusConfig{Namespace: "xmidt", Subsystem: "splitter"}),
+			option: WithPrometheusConfig(&PrometheusConfig{Namespace: "xmidt", Subsystem: testSubsystemSplitter}),
 			setupPub: func() *KafkaPublisher {
 				return &KafkaPublisher{config: &publisherConfig{}}
 			},
 			verifyPub: func(p *KafkaPublisher) {
 				suite.NotNil(p.config.prometheus)
 				suite.Equal("xmidt", p.config.prometheus.Namespace)
-				suite.Equal("splitter", p.config.prometheus.Subsystem)
+				suite.Equal(testSubsystemSplitter, p.config.prometheus.Subsystem)
 			},
 			description: "Should set Prometheus namespace and subsystem correctly",
 		},
@@ -520,13 +532,13 @@ func (suite *OptionsTestSuite) TestOptions() {
 		},
 		{
 			name:   "WithPrometheusConfig_namespace_only",
-			option: WithPrometheusConfig(&PrometheusConfig{Namespace: "monitoring", Subsystem: ""}),
+			option: WithPrometheusConfig(&PrometheusConfig{Namespace: testNamespaceMonitor, Subsystem: ""}),
 			setupPub: func() *KafkaPublisher {
 				return &KafkaPublisher{config: &publisherConfig{}}
 			},
 			verifyPub: func(p *KafkaPublisher) {
 				suite.NotNil(p.config.prometheus)
-				suite.Equal("monitoring", p.config.prometheus.Namespace)
+				suite.Equal(testNamespaceMonitor, p.config.prometheus.Namespace)
 				suite.Equal("", p.config.prometheus.Subsystem)
 			},
 			description: "Should set Prometheus namespace with empty subsystem",
@@ -570,8 +582,8 @@ func (suite *OptionsTestSuite) TestSASLConfigOptions() {
 			name: "valid_plain_config",
 			saslConfig: &SASLConfig{
 				Mechanism: saslMechanismPlain,
-				Username:  "user",
-				Password:  "pass",
+				Username:  testUsername,
+				Password:  testPassword,
 			},
 			expectError: false,
 			description: "Should handle valid PLAIN SASL config",
@@ -580,8 +592,8 @@ func (suite *OptionsTestSuite) TestSASLConfigOptions() {
 			name: "valid_scram256_config",
 			saslConfig: &SASLConfig{
 				Mechanism: saslMechanismScram256,
-				Username:  "user",
-				Password:  "pass",
+				Username:  testUsername,
+				Password:  testPassword,
 			},
 			expectError: false,
 			description: "Should handle valid SCRAM-SHA-256 config",
@@ -590,8 +602,8 @@ func (suite *OptionsTestSuite) TestSASLConfigOptions() {
 			name: "valid_scram512_config",
 			saslConfig: &SASLConfig{
 				Mechanism: saslMechanismScram512,
-				Username:  "user",
-				Password:  "pass",
+				Username:  testUsername,
+				Password:  testPassword,
 			},
 			expectError: false,
 			description: "Should handle valid SCRAM-SHA-512 config",
@@ -600,8 +612,8 @@ func (suite *OptionsTestSuite) TestSASLConfigOptions() {
 			name: "invalid_mechanism",
 			saslConfig: &SASLConfig{
 				Mechanism: "INVALID",
-				Username:  "user",
-				Password:  "pass",
+				Username:  testUsername,
+				Password:  testPassword,
 			},
 			expectError: true,
 			description: "Should return error for invalid SASL mechanism",
@@ -611,7 +623,7 @@ func (suite *OptionsTestSuite) TestSASLConfigOptions() {
 			saslConfig: &SASLConfig{
 				Mechanism: saslMechanismPlain,
 				Username:  "",
-				Password:  "pass",
+				Password:  testPassword,
 			},
 			expectError: true,
 			description: "Should return error when username is missing",
@@ -620,7 +632,7 @@ func (suite *OptionsTestSuite) TestSASLConfigOptions() {
 			name: "missing_password",
 			saslConfig: &SASLConfig{
 				Mechanism: saslMechanismPlain,
-				Username:  "user",
+				Username:  testUsername,
 				Password:  "",
 			},
 			expectError: true,
