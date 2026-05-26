@@ -10,9 +10,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// Test constants
 const (
 	testKeyAttr  = "key"
 	testKey1Attr = "key1"
+	testValueStr = "value"
+	testKey2Attr = "key2"
 )
 
 func TestNewEvent_EmptyMessage(t *testing.T) {
@@ -27,11 +30,11 @@ func TestEvent_AllLevels(t *testing.T) {
 
 	for _, level := range levels {
 		t.Run(level.String(), func(t *testing.T) {
-			event := NewEvent(level, "test", map[string]any{testKeyAttr: "value"})
+			event := NewEvent(level, "test", map[string]any{testKeyAttr: testValueStr})
 
 			assert.Equal(t, level, event.Level)
 			assert.Equal(t, "test", event.Message)
-			assert.Equal(t, "value", event.Attrs[testKeyAttr])
+			assert.Equal(t, testValueStr, event.Attrs[testKeyAttr])
 			assert.NotEmpty(t, event.String())
 		})
 	}
@@ -39,7 +42,7 @@ func TestEvent_AllLevels(t *testing.T) {
 
 func TestEvent_ComplexAttributes(t *testing.T) {
 	attrs := map[string]any{
-		"string": "value",
+		"string": testValueStr,
 		"int":    42,
 		"float":  3.14,
 		"bool":   true,
@@ -50,7 +53,7 @@ func TestEvent_ComplexAttributes(t *testing.T) {
 
 	event := NewEvent(LevelInfo, "complex event", attrs)
 
-	assert.Equal(t, "value", event.Attrs["string"])
+	assert.Equal(t, testValueStr, event.Attrs["string"])
 	assert.Equal(t, 42, event.Attrs["int"])
 	assert.Equal(t, 3.14, event.Attrs["float"])
 	assert.Equal(t, true, event.Attrs["bool"])

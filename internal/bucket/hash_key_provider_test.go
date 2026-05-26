@@ -94,7 +94,7 @@ func (s *HashKeyProviderSuite) TestParseHashKey_Invalid() {
 // GetHashKey tests
 func (s *HashKeyProviderSuite) TestGetHashKey_None() {
 	msg := &wrp.Message{
-		Metadata: map[string]string{DeviceIdMetadataKeyName: "mac:112233445566"},
+		Metadata: map[string]string{DeviceIdMetadataKeyName: testDeviceID},
 	}
 	hashKey := HashKey{Name: HashKeyNone}
 	key, err := hashKey.GetHashKey(msg)
@@ -104,12 +104,12 @@ func (s *HashKeyProviderSuite) TestGetHashKey_None() {
 
 func (s *HashKeyProviderSuite) TestGetHashKey_Metadata_Valid() {
 	msg := &wrp.Message{
-		Metadata: map[string]string{DeviceIdMetadataKeyName: "mac:112233445566"},
+		Metadata: map[string]string{DeviceIdMetadataKeyName: testDeviceID},
 	}
 	hashKey := HashKey{Name: HashKeyMetadata, MetadataField: DeviceIdMetadataKeyName}
 	key, err := hashKey.GetHashKey(msg)
 	assert.NoError(s.T(), err)
-	assert.Equal(s.T(), "mac:112233445566", key)
+	assert.Equal(s.T(), testDeviceID, key)
 }
 
 func (s *HashKeyProviderSuite) TestGetHashKey_Metadata_CustomField() {
@@ -124,12 +124,12 @@ func (s *HashKeyProviderSuite) TestGetHashKey_Metadata_CustomField() {
 
 func (s *HashKeyProviderSuite) TestGetHashKey_Metadata_DefaultWhenEmpty() {
 	msg := &wrp.Message{
-		Metadata: map[string]string{DeviceIdMetadataKeyName: "mac:112233445566"},
+		Metadata: map[string]string{DeviceIdMetadataKeyName: testDeviceID},
 	}
 	hashKey := HashKey{} // Empty struct should default to metadata/hw-deviceid
 	key, err := hashKey.GetHashKey(msg)
 	assert.NoError(s.T(), err)
-	assert.Equal(s.T(), "mac:112233445566", key)
+	assert.Equal(s.T(), testDeviceID, key)
 }
 
 func (s *HashKeyProviderSuite) TestGetHashKey_Metadata_NilMetadata() {
@@ -187,7 +187,7 @@ func (s *HashKeyProviderSuite) TestGetHashKey_Metadata_LeadingSlashFieldFound() 
 
 func (s *HashKeyProviderSuite) TestGetHashKey_Metadata_EmptyFieldName() {
 	msg := &wrp.Message{
-		Metadata: map[string]string{DeviceIdMetadataKeyName: "mac:112233445566"},
+		Metadata: map[string]string{DeviceIdMetadataKeyName: testDeviceID},
 	}
 	hashKey := HashKey{Name: HashKeyMetadata, MetadataField: ""}
 	key, err := hashKey.GetHashKey(msg)
@@ -230,7 +230,7 @@ func (s *HashKeyProviderSuite) TestGetHashKey_Source_InvalidFormat() {
 
 func (s *HashKeyProviderSuite) TestGetHashKey_InvalidKeyType() {
 	msg := &wrp.Message{
-		Metadata: map[string]string{DeviceIdMetadataKeyName: "mac:112233445566"},
+		Metadata: map[string]string{DeviceIdMetadataKeyName: testDeviceID},
 	}
 	hashKey := HashKey{Name: HashKeyType("invalid"), MetadataField: DeviceIdMetadataKeyName}
 	key, err := hashKey.GetHashKey(msg)
@@ -245,11 +245,11 @@ func (s *HashKeyProviderSuite) TestIntegration_ParseAndExtract_Metadata() {
 	assert.NoError(s.T(), err)
 
 	msg := &wrp.Message{
-		Metadata: map[string]string{DeviceIdMetadataKeyName: "mac:112233445566"},
+		Metadata: map[string]string{DeviceIdMetadataKeyName: testDeviceID},
 	}
 	key, err := hashKey.GetHashKey(msg)
 	assert.NoError(s.T(), err)
-	assert.Equal(s.T(), "mac:112233445566", key)
+	assert.Equal(s.T(), testDeviceID, key)
 }
 
 func (s *HashKeyProviderSuite) TestIntegration_ParseAndExtract_Source() {
@@ -281,11 +281,11 @@ func (s *HashKeyProviderSuite) TestIntegration_ParseAndExtract_Default() {
 	assert.NoError(s.T(), err)
 
 	msg := &wrp.Message{
-		Metadata: map[string]string{DeviceIdMetadataKeyName: "mac:112233445566"},
+		Metadata: map[string]string{DeviceIdMetadataKeyName: testDeviceID},
 	}
 	key, err := hashKey.GetHashKey(msg)
 	assert.NoError(s.T(), err)
-	assert.Equal(s.T(), "mac:112233445566", key)
+	assert.Equal(s.T(), testDeviceID, key)
 }
 
 func TestHashKeyProviderSuite(t *testing.T) {

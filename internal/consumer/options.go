@@ -300,6 +300,11 @@ func WithTLSConfig(t *TLSConfig) Option {
 	})
 }
 
+// SASL mechanism constants
+const (
+	saslMechanismPlain = "PLAIN"
+)
+
 func WithSASLConfig(s *SASLConfig) Option {
 	return optionFunc(func(c *KafkaConsumer) error {
 		if s == nil {
@@ -315,7 +320,7 @@ func WithSASLConfig(s *SASLConfig) Option {
 
 		var opt Option
 		switch s.Mechanism {
-		case "PLAIN":
+		case saslMechanismPlain:
 			opt = WithSASLPlain(s.Username, s.Password)
 		case "SCRAM-SHA-256":
 			opt = WithSASLScram256(s.Username, s.Password)

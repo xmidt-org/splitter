@@ -18,6 +18,10 @@ import (
 	"github.com/xmidt-org/wrpkafka"
 )
 
+const (
+	errorTypeNone = "none"
+)
+
 var (
 	ErrPublisherNotStarted     = errors.New("publisher is not started")
 	ErrPublisherAlreadyStarted = errors.New("publisher is already started")

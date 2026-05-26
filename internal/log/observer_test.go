@@ -31,7 +31,7 @@ func TestObserver_HandleEvent_Debug(t *testing.T) {
 	logger := slog.New(handler)
 	Observer := NewObserver(logger)
 
-	event := NewEvent(LevelDebug, "debug message", map[string]any{testKeyAttr: "value"})
+	event := NewEvent(LevelDebug, "debug message", map[string]any{testKeyAttr: testValueStr})
 	Observer.HandleEvent(event)
 
 	output := buf.String()
@@ -203,23 +203,23 @@ func TestArgsToMap(t *testing.T) {
 		},
 		{
 			name:     "single key-value pair",
-			args:     []any{testKeyAttr, "value"},
-			expected: map[string]any{testKeyAttr: "value"},
+			args:     []any{testKeyAttr, testValueStr},
+			expected: map[string]any{testKeyAttr: testValueStr},
 		},
 		{
 			name:     "multiple pairs",
-			args:     []any{testKey1Attr, "value1", "key2", 42, "key3", true},
-			expected: map[string]any{testKey1Attr: "value1", "key2": 42, "key3": true},
+			args:     []any{testKey1Attr, "value1", testKey2Attr, 42, "key3", true},
+			expected: map[string]any{testKey1Attr: "value1", testKey2Attr: 42, "key3": true},
 		},
 		{
 			name:     "odd number of args",
-			args:     []any{testKey1Attr, "value1", "key2"},
+			args:     []any{testKey1Attr, "value1", testKey2Attr},
 			expected: map[string]any{testKey1Attr: "value1"},
 		},
 		{
 			name:     "non-string key skipped",
-			args:     []any{123, "value", "key2", "value2"},
-			expected: map[string]any{"key2": "value2"},
+			args:     []any{123, testValueStr, testKey2Attr, "value2"},
+			expected: map[string]any{testKey2Attr: "value2"},
 		},
 		{
 			name:     "nil value",

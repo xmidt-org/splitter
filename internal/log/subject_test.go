@@ -32,7 +32,7 @@ func TestNew_SubjectReceivesEvents(t *testing.T) {
 
 	subject := New(logger)
 
-	event := NewEvent(LevelInfo, "test message", map[string]any{testKeyAttr: "value"})
+	event := NewEvent(LevelInfo, "test message", map[string]any{testKeyAttr: testValueStr})
 	subject.NotifySync(event)
 
 	// Give the logger time to write
@@ -41,7 +41,7 @@ func TestNew_SubjectReceivesEvents(t *testing.T) {
 	output := buf.String()
 	assert.Contains(t, output, "test message")
 	assert.Contains(t, output, "key")
-	assert.Contains(t, output, "value")
+	assert.Contains(t, output, testValueStr)
 }
 
 func TestNew_MultipleEvents(t *testing.T) {

@@ -132,8 +132,8 @@ func (suite *PublisherTestSuite) TestNew() {
 			name: "with_sasl_plain",
 			options: []Option{
 				WithBrokers(testBroker),
-				WithTopicRoutes(wrpkafka.TopicRoute{Topic: "test", Pattern: ".*"}),
-				WithSASLPlain("user", "pass"),
+				WithTopicRoutes(wrpkafka.TopicRoute{Topic: testTopicTest, Pattern: ".*"}),
+				WithSASLPlain(testUsername, testPassword),
 			},
 			expectError: false,
 			description: "Should create publisher with SASL Plain authentication",
@@ -142,8 +142,8 @@ func (suite *PublisherTestSuite) TestNew() {
 			name: "with_sasl_scram256",
 			options: []Option{
 				WithBrokers(testBroker),
-				WithTopicRoutes(wrpkafka.TopicRoute{Topic: "test", Pattern: ".*"}),
-				WithSASLScram256("user", "pass"),
+				WithTopicRoutes(wrpkafka.TopicRoute{Topic: testTopicTest, Pattern: ".*"}),
+				WithSASLScram256(testUsername, testPassword),
 			},
 			expectError: false,
 			description: "Should create publisher with SASL SCRAM-SHA-256",
@@ -152,8 +152,8 @@ func (suite *PublisherTestSuite) TestNew() {
 			name: "with_sasl_scram512",
 			options: []Option{
 				WithBrokers(testBroker),
-				WithTopicRoutes(wrpkafka.TopicRoute{Topic: "test", Pattern: ".*"}),
-				WithSASLScram512("user", "pass"),
+				WithTopicRoutes(wrpkafka.TopicRoute{Topic: testTopicTest, Pattern: ".*"}),
+				WithSASLScram512(testUsername, testPassword),
 			},
 			expectError: false,
 			description: "Should create publisher with SASL SCRAM-SHA-512",
@@ -162,7 +162,7 @@ func (suite *PublisherTestSuite) TestNew() {
 			name: "with_tls",
 			options: []Option{
 				WithBrokers(testBroker),
-				WithTopicRoutes(wrpkafka.TopicRoute{Topic: "test", Pattern: ".*"}),
+				WithTopicRoutes(wrpkafka.TopicRoute{Topic: testTopicTest, Pattern: ".*"}),
 				WithTLS(),
 			},
 			expectError: false,
@@ -172,7 +172,7 @@ func (suite *PublisherTestSuite) TestNew() {
 			name: "with_custom_tls_config",
 			options: []Option{
 				WithBrokers(testBroker),
-				WithTopicRoutes(wrpkafka.TopicRoute{Topic: "test", Pattern: ".*"}),
+				WithTopicRoutes(wrpkafka.TopicRoute{Topic: testTopicTest, Pattern: ".*"}),
 				WithTLSConfig(&TLSConfig{
 					Enabled:            true,
 					InsecureSkipVerify: true,
@@ -185,8 +185,8 @@ func (suite *PublisherTestSuite) TestNew() {
 			name: "with_prometheus_metrics",
 			options: []Option{
 				WithBrokers(testBroker),
-				WithTopicRoutes(wrpkafka.TopicRoute{Topic: "test", Pattern: ".*"}),
-				WithPrometheusConfig(&PrometheusConfig{Namespace: "xmidt", Subsystem: "splitter"}),
+				WithTopicRoutes(wrpkafka.TopicRoute{Topic: testTopicTest, Pattern: ".*"}),
+				WithPrometheusConfig(&PrometheusConfig{Namespace: "xmidt", Subsystem: testSubsystemSplitter}),
 			},
 			expectError: false,
 			description: "Should create publisher with Prometheus metrics configuration",
@@ -195,7 +195,7 @@ func (suite *PublisherTestSuite) TestNew() {
 			name: "with_prometheus_empty_values",
 			options: []Option{
 				WithBrokers(testBroker),
-				WithTopicRoutes(wrpkafka.TopicRoute{Topic: "test", Pattern: ".*"}),
+				WithTopicRoutes(wrpkafka.TopicRoute{Topic: testTopicTest, Pattern: ".*"}),
 				WithPrometheusConfig(&PrometheusConfig{Namespace: "", Subsystem: ""}),
 			},
 			expectError: false,
@@ -238,9 +238,9 @@ func (suite *PublisherTestSuite) TestPrometheusMetricsConfiguration() {
 		{
 			name:              "valid_namespace_and_subsystem",
 			namespace:         "xmidt",
-			subsystem:         "splitter",
+			subsystem:         testSubsystemSplitter,
 			expectedNamespace: "xmidt",
-			expectedSubsystem: "splitter",
+			expectedSubsystem: testSubsystemSplitter,
 			description:       "Should configure Prometheus with valid namespace and subsystem",
 		},
 		{
@@ -253,9 +253,9 @@ func (suite *PublisherTestSuite) TestPrometheusMetricsConfiguration() {
 		},
 		{
 			name:              "namespace_only",
-			namespace:         "monitoring",
+			namespace:         testNamespaceMonitor,
 			subsystem:         "",
-			expectedNamespace: "monitoring",
+			expectedNamespace: testNamespaceMonitor,
 			expectedSubsystem: "",
 			description:       "Should configure with namespace but no subsystem",
 		},
@@ -273,7 +273,7 @@ func (suite *PublisherTestSuite) TestPrometheusMetricsConfiguration() {
 		suite.Run(tt.name, func() {
 			publisher, err := New(
 				WithBrokers(testBroker),
-				WithTopicRoutes(wrpkafka.TopicRoute{Topic: "test", Pattern: ".*"}),
+				WithTopicRoutes(wrpkafka.TopicRoute{Topic: testTopicTest, Pattern: ".*"}),
 				WithPrometheusConfig(&PrometheusConfig{Namespace: tt.namespace, Subsystem: tt.subsystem}),
 			)
 
@@ -352,13 +352,13 @@ func (suite *PublisherTestSuite) TestToWRPKafkaPrometheusConfig() {
 		{
 			name: "selective_metrics",
 			config: &PrometheusConfig{
-				Namespace:          "monitoring",
+				Namespace:          testNamespaceMonitor,
 				Subsystem:          testSubsystemKafka,
 				EnableGoCollectors: true,
 				// Other metrics remain false (default)
 			},
 			expected: wrpkafka.PrometheusConfig{
-				Namespace:             "monitoring",
+				Namespace:             testNamespaceMonitor,
 				Subsystem:             testSubsystemKafka,
 				Registerer:            nil,
 				EnableBatchMetrics:    false,
@@ -457,7 +457,7 @@ func (suite *PublisherTestSuite) TestIsStarted() {
 		suite.Run(tt.name, func() {
 			publisher, _ := New(
 				WithBrokers(testBroker),
-				WithTopicRoutes(wrpkafka.TopicRoute{Topic: "test", Pattern: ".*"}),
+				WithTopicRoutes(wrpkafka.TopicRoute{Topic: testTopicTest, Pattern: ".*"}),
 			)
 			publisher.started = tt.started
 
@@ -472,7 +472,7 @@ func (suite *PublisherTestSuite) TestIsStarted() {
 func (suite *PublisherTestSuite) TestProduceWhenNotStarted() {
 	publisher, err := New(
 		WithBrokers(testBroker),
-		WithTopicRoutes(wrpkafka.TopicRoute{Topic: "test", Pattern: ".*"}),
+		WithTopicRoutes(wrpkafka.TopicRoute{Topic: testTopicTest, Pattern: ".*"}),
 		WithMetricsEmitter(suite.metricEmitter),
 	)
 	suite.NoError(err)
@@ -480,7 +480,7 @@ func (suite *PublisherTestSuite) TestProduceWhenNotStarted() {
 
 	message := &wrp.Message{
 		Type:   wrp.SimpleEventMessageType,
-		Source: "test",
+		Source: testTopicTest,
 	}
 
 	outcome, err := publisher.Produce(context.Background(), message)
@@ -494,7 +494,7 @@ func (suite *PublisherTestSuite) TestProduceWhenNotStarted() {
 func (suite *PublisherTestSuite) TestConcurrentIsStarted() {
 	publisher, err := New(
 		WithBrokers(testBroker),
-		WithTopicRoutes(wrpkafka.TopicRoute{Topic: "test", Pattern: ".*"}),
+		WithTopicRoutes(wrpkafka.TopicRoute{Topic: testTopicTest, Pattern: ".*"}),
 	)
 	suite.NoError(err)
 
@@ -531,7 +531,7 @@ func (suite *PublisherTestSuite) TestStart() {
 			setupPublisher: func() *KafkaPublisher {
 				p, _ := New(
 					WithBrokers(testBroker),
-					WithTopicRoutes(wrpkafka.TopicRoute{Topic: "test", Pattern: ".*"}),
+					WithTopicRoutes(wrpkafka.TopicRoute{Topic: testTopicTest, Pattern: ".*"}),
 					WithLogEmitter(suite.logEmitter),
 				)
 				p.started = true // Manually set as started to test error condition
@@ -574,7 +574,7 @@ func (suite *PublisherTestSuite) TestStop() {
 			setupPublisher: func() *KafkaPublisher {
 				p, _ := New(
 					WithBrokers(testBroker),
-					WithTopicRoutes(wrpkafka.TopicRoute{Topic: "test", Pattern: ".*"}),
+					WithTopicRoutes(wrpkafka.TopicRoute{Topic: testTopicTest, Pattern: ".*"}),
 					WithLogEmitter(suite.logEmitter),
 				)
 				return p
@@ -586,7 +586,7 @@ func (suite *PublisherTestSuite) TestStop() {
 			setupPublisher: func() *KafkaPublisher {
 				p, _ := New(
 					WithBrokers(testBroker),
-					WithTopicRoutes(wrpkafka.TopicRoute{Topic: "test", Pattern: ".*"}),
+					WithTopicRoutes(wrpkafka.TopicRoute{Topic: testTopicTest, Pattern: ".*"}),
 					WithLogEmitter(suite.logEmitter),
 				)
 				p.started = true // Manually set as started for this test
@@ -643,7 +643,7 @@ func (suite *PublisherTestSuite) TestProduceMessageTypes() {
 			message: &wrp.Message{
 				Type:        wrp.CreateMessageType,
 				Source:      testDeviceSource,
-				Destination: "mac:112233445566/config",
+				Destination: testDeviceConfig,
 				Payload:     []byte(`{"parameters": {"Device.WiFi.SSID": "MyNetwork"}}`),
 			},
 			description: "Should handle CreateMessageType",
@@ -653,7 +653,7 @@ func (suite *PublisherTestSuite) TestProduceMessageTypes() {
 			message: &wrp.Message{
 				Type:        wrp.RetrieveMessageType,
 				Source:      testDeviceSource,
-				Destination: "mac:112233445566/config",
+				Destination: testDeviceConfig,
 				Payload:     []byte(`{"names": ["Device.WiFi.SSID"]}`),
 			},
 			description: "Should handle RetrieveMessageType",
@@ -663,7 +663,7 @@ func (suite *PublisherTestSuite) TestProduceMessageTypes() {
 			message: &wrp.Message{
 				Type:        wrp.UpdateMessageType,
 				Source:      testDeviceSource,
-				Destination: "mac:112233445566/config",
+				Destination: testDeviceConfig,
 				Payload:     []byte(`{"parameters": {"Device.WiFi.SSID": "UpdatedNetwork"}}`),
 			},
 			description: "Should handle UpdateMessageType",
@@ -673,7 +673,7 @@ func (suite *PublisherTestSuite) TestProduceMessageTypes() {
 			message: &wrp.Message{
 				Type:        wrp.DeleteMessageType,
 				Source:      testDeviceSource,
-				Destination: "mac:112233445566/config",
+				Destination: testDeviceConfig,
 				Payload:     []byte(`{"names": ["Device.WiFi.SSID"]}`),
 			},
 			description: "Should handle DeleteMessageType",
@@ -686,7 +686,7 @@ func (suite *PublisherTestSuite) TestProduceMessageTypes() {
 
 			publisher, err := New(
 				WithBrokers(testBroker),
-				WithTopicRoutes(wrpkafka.TopicRoute{Topic: "test", Pattern: ".*"}),
+				WithTopicRoutes(wrpkafka.TopicRoute{Topic: testTopicTest, Pattern: ".*"}),
 				WithMetricsEmitter(suite.metricEmitter),
 			)
 			suite.NoError(err)
@@ -720,7 +720,7 @@ func (suite *PublisherTestSuite) TestEdgeCases() {
 			setupTest: func() (*KafkaPublisher, *wrp.Message, context.Context) {
 				p, _ := New(
 					WithBrokers(testBroker),
-					WithTopicRoutes(wrpkafka.TopicRoute{Topic: "test", Pattern: ".*"}),
+					WithTopicRoutes(wrpkafka.TopicRoute{Topic: testTopicTest, Pattern: ".*"}),
 				)
 				return p, nil, context.Background()
 			},
@@ -732,14 +732,14 @@ func (suite *PublisherTestSuite) TestEdgeCases() {
 			setupTest: func() (*KafkaPublisher, *wrp.Message, context.Context) {
 				p, _ := New(
 					WithBrokers(testBroker),
-					WithTopicRoutes(wrpkafka.TopicRoute{Topic: "test", Pattern: ".*"}),
+					WithTopicRoutes(wrpkafka.TopicRoute{Topic: testTopicTest, Pattern: ".*"}),
 				)
 				ctx, cancel := context.WithCancel(context.Background())
 				cancel() // Cancel immediately
 
 				message := &wrp.Message{
 					Type:   wrp.SimpleEventMessageType,
-					Source: "test",
+					Source: testTopicTest,
 				}
 
 				return p, message, ctx
@@ -752,7 +752,7 @@ func (suite *PublisherTestSuite) TestEdgeCases() {
 			setupTest: func() (*KafkaPublisher, *wrp.Message, context.Context) {
 				p, _ := New(
 					WithBrokers(testBroker),
-					WithTopicRoutes(wrpkafka.TopicRoute{Topic: "test", Pattern: ".*"}),
+					WithTopicRoutes(wrpkafka.TopicRoute{Topic: testTopicTest, Pattern: ".*"}),
 				)
 
 				// Message with minimal/empty fields
@@ -792,7 +792,7 @@ func (suite *PublisherTestSuite) TestEdgeCases() {
 func (suite *PublisherTestSuite) TestConcurrentStartStop() {
 	publisher, err := New(
 		WithBrokers(testBroker),
-		WithTopicRoutes(wrpkafka.TopicRoute{Topic: "test", Pattern: ".*"}),
+		WithTopicRoutes(wrpkafka.TopicRoute{Topic: testTopicTest, Pattern: ".*"}),
 		WithLogEmitter(suite.logEmitter),
 	)
 	suite.NoError(err)
@@ -852,10 +852,10 @@ func (suite *PublisherTestSuite) TestPublisherValidation() {
 			options: []Option{
 				WithBrokers(Brokers{
 					RestartOnConfigChange: false,
-					TargetRegion:          "us-east-1",
+					TargetRegion:          testRegionUSEast1,
 					Regions:               map[string][]string{}, // Empty regions map
 				}),
-				WithTopicRoutes(wrpkafka.TopicRoute{Topic: "test", Pattern: ".*"}),
+				WithTopicRoutes(wrpkafka.TopicRoute{Topic: testTopicTest, Pattern: ".*"}),
 			},
 			expectError: true,
 			errorCheck:  func(err error) bool { return err.Error() == "brokers cannot be empty" },
@@ -875,7 +875,7 @@ func (suite *PublisherTestSuite) TestPublisherValidation() {
 			name: "valid_minimal_config",
 			options: []Option{
 				WithBrokers(testBroker),
-				WithTopicRoutes(wrpkafka.TopicRoute{Topic: "test", Pattern: ".*"}),
+				WithTopicRoutes(wrpkafka.TopicRoute{Topic: testTopicTest, Pattern: ".*"}),
 			},
 			expectError: false,
 			description: "Should accept minimal valid configuration",

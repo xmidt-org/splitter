@@ -14,4 +14,9 @@ const (
 	testHistogramName           = "test_histogram"
 	testCompletelyUnknownMetric = "completely_unknown"
 	testAsyncValue              = "async"
+	testValue1                  = "value1"
+	testValue2                  = "value2"
+	testValue3                  = "value3"
+	testUnknownMetricName       = "unknown_metric_name"
+	testLabelTest               = "test"
 )
