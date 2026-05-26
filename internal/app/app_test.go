@@ -44,6 +44,7 @@ const (
 	testSubsystem      = "test_subsystem"
 	testValidYaml      = "test-valid.yaml"
 	testBaseYaml       = "base.yaml"
+	testOverrideYaml   = "override.yaml"
 )
 
 // Comprehensive tests for CLI provider functions
@@ -954,9 +955,9 @@ producer:
 		{
 			name: "WithMultipleFiles",
 			setupCLI: func() *CLI {
-				return &CLI{Files: []string{testBaseYaml, "override.yaml"}}
+				return &CLI{Files: []string{testBaseYaml, testOverrideYaml}}
 			},
-			setupFiles: []string{testBaseYaml, "override.yaml"},
+			setupFiles: []string{testBaseYaml, testOverrideYaml},
 			fileContents: map[string]string{
 				testBaseYaml: `
 consumer:
@@ -964,7 +965,7 @@ consumer:
     - localhost:9092
   group_id: base-group
 `,
-				"override.yaml": `
+				testOverrideYaml: `
 consumer:
   topics: ["override-topic"]
 `,
