@@ -30,11 +30,11 @@ func (s *EventTestSuite) TestEvent_Creation() {
 			name: "event with all fields",
 			event: Event{
 				Name:   "test_metric",
-				Labels: []string{"label1", "value1", "label2", "value2"},
+				Labels: []string{testLabel1, "value1", "label2", "value2"},
 				Value:  42.5,
 			},
 			expectedName:   "test_metric",
-			expectedLabels: []string{"label1", "value1", "label2", "value2"},
+			expectedLabels: []string{testLabel1, "value1", "label2", "value2"},
 			expectedValue:  42.5,
 		},
 		{
@@ -95,7 +95,7 @@ func (s *EventTestSuite) TestEvent_Creation() {
 func (s *EventTestSuite) TestEvent_ConsumerErrors() {
 	event := Event{
 		Name:   ConsumerFetchErrors,
-		Labels: []string{PartitionLabel, "0", TopicLabel, "test-topic", ErrorTypeLabel, "decode_error"},
+		Labels: []string{PartitionLabel, "0", TopicLabel, testTopicValue, ErrorTypeLabel, "decode_error"},
 		Value:  1.0,
 	}
 

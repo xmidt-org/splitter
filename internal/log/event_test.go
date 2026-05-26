@@ -10,6 +10,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const (
+	testKeyAttr  = "key"
+	testKey1Attr = "key1"
+)
+
 func TestNewEvent_EmptyMessage(t *testing.T) {
 	event := NewEvent(LevelWarn, "", nil)
 
@@ -22,11 +27,11 @@ func TestEvent_AllLevels(t *testing.T) {
 
 	for _, level := range levels {
 		t.Run(level.String(), func(t *testing.T) {
-			event := NewEvent(level, "test", map[string]any{"key": "value"})
+			event := NewEvent(level, "test", map[string]any{testKeyAttr: "value"})
 
 			assert.Equal(t, level, event.Level)
 			assert.Equal(t, "test", event.Message)
-			assert.Equal(t, "value", event.Attrs["key"])
+			assert.Equal(t, "value", event.Attrs[testKeyAttr])
 			assert.NotEmpty(t, event.String())
 		})
 	}

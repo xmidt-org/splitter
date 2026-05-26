@@ -32,7 +32,7 @@ func TestNew_SubjectReceivesEvents(t *testing.T) {
 
 	subject := New(logger)
 
-	event := NewEvent(LevelInfo, "test message", map[string]any{"key": "value"})
+	event := NewEvent(LevelInfo, "test message", map[string]any{testKeyAttr: "value"})
 	subject.NotifySync(event)
 
 	// Give the logger time to write
