@@ -28,6 +28,7 @@ const (
 	testTopicTest         = "test"
 	testSubsystemSplitter = "splitter"
 	testNamespaceMonitor  = "monitoring"
+	testNamespaceXmidt    = "xmidt"
 	testUsername          = "user"
 	testPassword          = "pass"
 	testDeviceConfig      = "mac:112233445566/config"
@@ -506,13 +507,13 @@ func (suite *OptionsTestSuite) TestOptions() {
 		},
 		{
 			name:   "WithPrometheusConfig_both_values",
-			option: WithPrometheusConfig(&PrometheusConfig{Namespace: "xmidt", Subsystem: testSubsystemSplitter}),
+			option: WithPrometheusConfig(&PrometheusConfig{Namespace: testNamespaceXmidt, Subsystem: testSubsystemSplitter}),
 			setupPub: func() *KafkaPublisher {
 				return &KafkaPublisher{config: &publisherConfig{}}
 			},
 			verifyPub: func(p *KafkaPublisher) {
 				suite.NotNil(p.config.prometheus)
-				suite.Equal("xmidt", p.config.prometheus.Namespace)
+				suite.Equal(testNamespaceXmidt, p.config.prometheus.Namespace)
 				suite.Equal(testSubsystemSplitter, p.config.prometheus.Subsystem)
 			},
 			description: "Should set Prometheus namespace and subsystem correctly",

@@ -14,6 +14,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	testValue1 = "value1"
+)
+
 func TestNewObserver(t *testing.T) {
 	var buf bytes.Buffer
 	handler := slog.NewJSONHandler(&buf, nil)
@@ -208,13 +212,13 @@ func TestArgsToMap(t *testing.T) {
 		},
 		{
 			name:     "multiple pairs",
-			args:     []any{testKey1Attr, "value1", testKey2Attr, 42, "key3", true},
-			expected: map[string]any{testKey1Attr: "value1", testKey2Attr: 42, "key3": true},
+			args:     []any{testKey1Attr, testValue1, testKey2Attr, 42, "key3", true},
+			expected: map[string]any{testKey1Attr: testValue1, testKey2Attr: 42, "key3": true},
 		},
 		{
 			name:     "odd number of args",
-			args:     []any{testKey1Attr, "value1", testKey2Attr},
-			expected: map[string]any{testKey1Attr: "value1"},
+			args:     []any{testKey1Attr, testValue1, testKey2Attr},
+			expected: map[string]any{testKey1Attr: testValue1},
 		},
 		{
 			name:     "non-string key skipped",

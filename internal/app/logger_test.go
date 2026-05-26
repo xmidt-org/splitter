@@ -16,6 +16,13 @@ import (
 	"go.uber.org/fx/fxevent"
 )
 
+// Test constants
+const (
+	logLevelInfo    = "INFO"
+	logEncodingJSON = "json"
+	testCallerName  = "testCaller"
+)
+
 type LoggerTestSuite struct {
 	suite.Suite
 	tempDir string
@@ -36,8 +43,8 @@ func (s *LoggerTestSuite) TearDownTest() {
 // Test newLogger with default configuration
 func (s *LoggerTestSuite) TestNewLogger_DefaultConfig() {
 	cfg := LogConfig{
-		Level:       "INFO",
-		Encoding:    "json",
+		Level:       logLevelInfo,
+		Encoding:    logEncodingJSON,
 		OutputPaths: []string{},
 	}
 
@@ -49,9 +56,9 @@ func (s *LoggerTestSuite) TestNewLogger_DefaultConfig() {
 // Test newLogger with DEBUG level
 func (s *LoggerTestSuite) TestNewLogger_DebugLevel() {
 	cfg := LogConfig{
-		Level:       "DEBUG",
-		Encoding:    "json",
-		OutputPaths: []string{"stdout"},
+		Level:       logLevelDebug,
+		Encoding:    logEncodingJSON,
+		OutputPaths: []string{logOutputStdout},
 	}
 
 	logger, err := newLogger(cfg)
@@ -62,9 +69,9 @@ func (s *LoggerTestSuite) TestNewLogger_DebugLevel() {
 // Test newLogger with WARN level
 func (s *LoggerTestSuite) TestNewLogger_WarnLevel() {
 	cfg := LogConfig{
-		Level:       "WARN",
-		Encoding:    "json",
-		OutputPaths: []string{"stdout"},
+		Level:       logLevelWarn,
+		Encoding:    logEncodingJSON,
+		OutputPaths: []string{logOutputStdout},
 	}
 
 	logger, err := newLogger(cfg)
@@ -76,8 +83,8 @@ func (s *LoggerTestSuite) TestNewLogger_WarnLevel() {
 func (s *LoggerTestSuite) TestNewLogger_ErrorLevel() {
 	cfg := LogConfig{
 		Level:       "ERROR",
-		Encoding:    "json",
-		OutputPaths: []string{"stdout"},
+		Encoding:    logEncodingJSON,
+		OutputPaths: []string{logOutputStdout},
 	}
 
 	logger, err := newLogger(cfg)
@@ -89,8 +96,8 @@ func (s *LoggerTestSuite) TestNewLogger_ErrorLevel() {
 func (s *LoggerTestSuite) TestNewLogger_UnknownLevel() {
 	cfg := LogConfig{
 		Level:       "UNKNOWN",
-		Encoding:    "json",
-		OutputPaths: []string{"stdout"},
+		Encoding:    logEncodingJSON,
+		OutputPaths: []string{logOutputStdout},
 	}
 
 	logger, err := newLogger(cfg)
@@ -101,9 +108,9 @@ func (s *LoggerTestSuite) TestNewLogger_UnknownLevel() {
 // Test newLogger with console encoding
 func (s *LoggerTestSuite) TestNewLogger_ConsoleEncoding() {
 	cfg := LogConfig{
-		Level:       "INFO",
-		Encoding:    "console",
-		OutputPaths: []string{"stdout"},
+		Level:       logLevelInfo,
+		Encoding:    logEncodingConsole,
+		OutputPaths: []string{logOutputStdout},
 	}
 
 	logger, err := newLogger(cfg)
@@ -114,9 +121,9 @@ func (s *LoggerTestSuite) TestNewLogger_ConsoleEncoding() {
 // Test newLogger with JSON encoding
 func (s *LoggerTestSuite) TestNewLogger_JSONEncoding() {
 	cfg := LogConfig{
-		Level:       "INFO",
-		Encoding:    "json",
-		OutputPaths: []string{"stdout"},
+		Level:       logLevelInfo,
+		Encoding:    logEncodingJSON,
+		OutputPaths: []string{logOutputStdout},
 	}
 
 	logger, err := newLogger(cfg)
@@ -127,9 +134,9 @@ func (s *LoggerTestSuite) TestNewLogger_JSONEncoding() {
 // Test newLogger with stdout output
 func (s *LoggerTestSuite) TestNewLogger_StdoutOutput() {
 	cfg := LogConfig{
-		Level:       "INFO",
-		Encoding:    "json",
-		OutputPaths: []string{"stdout"},
+		Level:       logLevelInfo,
+		Encoding:    logEncodingJSON,
+		OutputPaths: []string{logOutputStdout},
 	}
 
 	logger, err := newLogger(cfg)
@@ -140,9 +147,9 @@ func (s *LoggerTestSuite) TestNewLogger_StdoutOutput() {
 // Test newLogger with stderr output
 func (s *LoggerTestSuite) TestNewLogger_StderrOutput() {
 	cfg := LogConfig{
-		Level:       "INFO",
-		Encoding:    "json",
-		OutputPaths: []string{"stderr"},
+		Level:       logLevelInfo,
+		Encoding:    logEncodingJSON,
+		OutputPaths: []string{logOutputStderr},
 	}
 
 	logger, err := newLogger(cfg)
@@ -153,8 +160,8 @@ func (s *LoggerTestSuite) TestNewLogger_StderrOutput() {
 // Test newLogger with empty string output (should default to stdout)
 func (s *LoggerTestSuite) TestNewLogger_EmptyStringOutput() {
 	cfg := LogConfig{
-		Level:       "INFO",
-		Encoding:    "json",
+		Level:       logLevelInfo,
+		Encoding:    logEncodingJSON,
 		OutputPaths: []string{""},
 	}
 
@@ -167,8 +174,8 @@ func (s *LoggerTestSuite) TestNewLogger_EmptyStringOutput() {
 func (s *LoggerTestSuite) TestNewLogger_FileOutput() {
 	logFile := filepath.Join(s.tempDir, "test.log")
 	cfg := LogConfig{
-		Level:       "INFO",
-		Encoding:    "json",
+		Level:       logLevelInfo,
+		Encoding:    logEncodingJSON,
 		OutputPaths: []string{logFile},
 	}
 
@@ -187,8 +194,8 @@ func (s *LoggerTestSuite) TestNewLogger_FileOutput() {
 func (s *LoggerTestSuite) TestNewLogger_InvalidFilePath() {
 	invalidPath := filepath.Join(s.tempDir, "nonexistent", "dir", "test.log")
 	cfg := LogConfig{
-		Level:       "INFO",
-		Encoding:    "json",
+		Level:       logLevelInfo,
+		Encoding:    logEncodingJSON,
 		OutputPaths: []string{invalidPath},
 	}
 
@@ -207,9 +214,9 @@ func (s *LoggerTestSuite) TestNewLogger_MultipleOutputs() {
 	logFile2 := filepath.Join(s.tempDir, "test2.log")
 
 	cfg := LogConfig{
-		Level:       "INFO",
-		Encoding:    "json",
-		OutputPaths: []string{"stdout", logFile1, "stderr", logFile2},
+		Level:       logLevelInfo,
+		Encoding:    logEncodingJSON,
+		OutputPaths: []string{logOutputStdout, logFile1, logOutputStderr, logFile2},
 	}
 
 	logger, err := newLogger(cfg)
@@ -230,9 +237,9 @@ func (s *LoggerTestSuite) TestNewLogger_MultipleOutputs_WithInvalidPath() {
 	invalidPath := filepath.Join(s.tempDir, "nonexistent", "dir", "test.log")
 
 	cfg := LogConfig{
-		Level:       "INFO",
-		Encoding:    "json",
-		OutputPaths: []string{"stdout", logFile, invalidPath},
+		Level:       logLevelInfo,
+		Encoding:    logEncodingJSON,
+		OutputPaths: []string{logOutputStdout, logFile, invalidPath},
 	}
 
 	// Logger creation will succeed with lumberjack even with invalid paths
@@ -251,8 +258,8 @@ func (s *LoggerTestSuite) TestNewLogger_MultipleOutputs_WithInvalidPath() {
 func (s *LoggerTestSuite) TestNewLogger_LogsToFile() {
 	logFile := filepath.Join(s.tempDir, "test.log")
 	cfg := LogConfig{
-		Level:       "INFO",
-		Encoding:    "json",
+		Level:       logLevelInfo,
+		Encoding:    logEncodingJSON,
 		OutputPaths: []string{logFile},
 	}
 
@@ -292,7 +299,7 @@ func (s *LoggerTestSuite) TestSlogFxLogger_OnStartExecuting() {
 	fxLogger := &slogFxLogger{logger: logger}
 
 	event := &fxevent.OnStartExecuting{
-		CallerName: "testCaller",
+		CallerName: testCallerName,
 	}
 
 	fxLogger.LogEvent(event)
@@ -313,7 +320,7 @@ func (s *LoggerTestSuite) TestSlogFxLogger_OnStartExecuted_WithError() {
 	fxLogger := &slogFxLogger{logger: logger}
 
 	event := &fxevent.OnStartExecuted{
-		CallerName: "testCaller",
+		CallerName: testCallerName,
 		Err:        fmt.Errorf("test error"),
 	}
 
@@ -335,7 +342,7 @@ func (s *LoggerTestSuite) TestSlogFxLogger_OnStartExecuted_WithoutError() {
 	fxLogger := &slogFxLogger{logger: logger}
 
 	event := &fxevent.OnStartExecuted{
-		CallerName: "testCaller",
+		CallerName: testCallerName,
 		Err:        nil,
 	}
 
@@ -357,7 +364,7 @@ func (s *LoggerTestSuite) TestSlogFxLogger_OnStopExecuting() {
 	fxLogger := &slogFxLogger{logger: logger}
 
 	event := &fxevent.OnStopExecuting{
-		CallerName: "testCaller",
+		CallerName: testCallerName,
 	}
 
 	fxLogger.LogEvent(event)
@@ -378,7 +385,7 @@ func (s *LoggerTestSuite) TestSlogFxLogger_OnStopExecuted_WithError() {
 	fxLogger := &slogFxLogger{logger: logger}
 
 	event := &fxevent.OnStopExecuted{
-		CallerName: "testCaller",
+		CallerName: testCallerName,
 		Err:        fmt.Errorf("test error"),
 	}
 
@@ -400,7 +407,7 @@ func (s *LoggerTestSuite) TestSlogFxLogger_OnStopExecuted_WithoutError() {
 	fxLogger := &slogFxLogger{logger: logger}
 
 	event := &fxevent.OnStopExecuted{
-		CallerName: "testCaller",
+		CallerName: testCallerName,
 		Err:        nil,
 	}
 

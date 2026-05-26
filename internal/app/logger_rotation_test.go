@@ -22,8 +22,8 @@ func TestNewLogger_WithRotation(t *testing.T) {
 	logFile := filepath.Join(tmpDir, "test.log")
 
 	cfg := LogConfig{
-		Level:       "INFO",
-		Encoding:    "json",
+		Level:       logLevelInfo,
+		Encoding:    logEncodingJSON,
 		OutputPaths: []string{logFile},
 		Rotation: RotationConfig{
 			MaxSize:    1, // 1 MB for quick testing
@@ -67,9 +67,9 @@ func TestNewLogger_MultipleOutputsWithRotation(t *testing.T) {
 	logFile2 := filepath.Join(tmpDir, "test2.log")
 
 	cfg := LogConfig{
-		Level:       "DEBUG",
-		Encoding:    "console",
-		OutputPaths: []string{"stdout", logFile1, logFile2},
+		Level:       logLevelDebug,
+		Encoding:    logEncodingConsole,
+		OutputPaths: []string{logOutputStdout, logFile1, logFile2},
 		Rotation: RotationConfig{
 			MaxSize:    5,
 			MaxAge:     7,
@@ -110,7 +110,7 @@ func TestNewLogger_RotationConfigDefaults(t *testing.T) {
 	logFile := filepath.Join(tmpDir, "defaults.log")
 
 	cfg := LogConfig{
-		Level:       "WARN",
+		Level:       logLevelWarn,
 		OutputPaths: []string{logFile},
 		// Rotation config not specified - should use defaults
 	}

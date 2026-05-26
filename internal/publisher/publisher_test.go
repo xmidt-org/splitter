@@ -186,7 +186,7 @@ func (suite *PublisherTestSuite) TestNew() {
 			options: []Option{
 				WithBrokers(testBroker),
 				WithTopicRoutes(wrpkafka.TopicRoute{Topic: testTopicTest, Pattern: ".*"}),
-				WithPrometheusConfig(&PrometheusConfig{Namespace: "xmidt", Subsystem: testSubsystemSplitter}),
+				WithPrometheusConfig(&PrometheusConfig{Namespace: testNamespaceXmidt, Subsystem: testSubsystemSplitter}),
 			},
 			expectError: false,
 			description: "Should create publisher with Prometheus metrics configuration",
@@ -237,9 +237,9 @@ func (suite *PublisherTestSuite) TestPrometheusMetricsConfiguration() {
 	}{
 		{
 			name:              "valid_namespace_and_subsystem",
-			namespace:         "xmidt",
+			namespace:         testNamespaceXmidt,
 			subsystem:         testSubsystemSplitter,
-			expectedNamespace: "xmidt",
+			expectedNamespace: testNamespaceXmidt,
 			expectedSubsystem: testSubsystemSplitter,
 			description:       "Should configure Prometheus with valid namespace and subsystem",
 		},
@@ -314,11 +314,11 @@ func (suite *PublisherTestSuite) TestToWRPKafkaPrometheusConfig() {
 		{
 			name: "basic_namespace_subsystem",
 			config: &PrometheusConfig{
-				Namespace: "xmidt",
+				Namespace: testNamespaceXmidt,
 				Subsystem: "splitter_publisher",
 			},
 			expected: wrpkafka.PrometheusConfig{
-				Namespace:             "xmidt",
+				Namespace:             testNamespaceXmidt,
 				Subsystem:             "splitter_publisher",
 				Registerer:            nil,
 				EnableBatchMetrics:    false,
@@ -331,7 +331,7 @@ func (suite *PublisherTestSuite) TestToWRPKafkaPrometheusConfig() {
 		{
 			name: "all_optional_metrics_enabled",
 			config: &PrometheusConfig{
-				Namespace:             "xmidt",
+				Namespace:             testNamespaceXmidt,
 				Subsystem:             "publisher",
 				EnableBatchMetrics:    true,
 				EnableCompressedBytes: true,
@@ -339,7 +339,7 @@ func (suite *PublisherTestSuite) TestToWRPKafkaPrometheusConfig() {
 				WithClientLabel:       true,
 			},
 			expected: wrpkafka.PrometheusConfig{
-				Namespace:             "xmidt",
+				Namespace:             testNamespaceXmidt,
 				Subsystem:             "publisher",
 				Registerer:            nil,
 				EnableBatchMetrics:    true,

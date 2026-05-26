@@ -66,8 +66,8 @@ func TestBuildConsumerPrometheusConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Setup test touchstone config and registerer
 			touchstoneCfg := touchstone.Config{
-				DefaultNamespace: "test_namespace",
-				DefaultSubsystem: "test_subsystem",
+				DefaultNamespace: testNamespace,
+				DefaultSubsystem: testSubsystem,
 			}
 			registerer := prometheus.NewRegistry()
 
@@ -75,8 +75,8 @@ func TestBuildConsumerPrometheusConfig(t *testing.T) {
 			result := buildConsumerPrometheusConfig(tt.yamlCfg, touchstoneCfg, registerer)
 
 			// Verify: namespace/subsystem/registerer always come from touchstone
-			assert.Equal(t, "test_namespace", result.Namespace, "namespace should come from touchstone")
-			assert.Equal(t, "test_subsystem_consumer", result.Subsystem, "subsystem should come from touchstone with _consumer suffix")
+			assert.Equal(t, testNamespace, result.Namespace, "namespace should come from touchstone")
+			assert.Equal(t, testSubsystem+"_consumer", result.Subsystem, "subsystem should come from touchstone with _consumer suffix")
 			assert.Equal(t, registerer, result.Registerer, "registerer should come from touchstone")
 
 			// Verify: optional metrics match expected values

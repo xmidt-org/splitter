@@ -188,11 +188,11 @@ func provideLogger(in LoggerIn) (*slog.Logger, error) {
 	if in.CLI.Dev {
 		in.Cfg.EncodeLevel = "capitalColor"
 		in.Cfg.EncodeTime = "RFC3339"
-		in.Cfg.Level = "DEBUG"
+		in.Cfg.Level = logLevelDebug
 		in.Cfg.Development = true
-		in.Cfg.Encoding = "console"
-		in.Cfg.OutputPaths = append(in.Cfg.OutputPaths, "stderr")
-		in.Cfg.ErrorOutputPaths = append(in.Cfg.ErrorOutputPaths, "stderr")
+		in.Cfg.Encoding = logEncodingConsole
+		in.Cfg.OutputPaths = append(in.Cfg.OutputPaths, logOutputStderr)
+		in.Cfg.ErrorOutputPaths = append(in.Cfg.ErrorOutputPaths, logOutputStderr)
 	}
 
 	logger, err := newLogger(in.Cfg)

@@ -13,6 +13,23 @@ import (
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
+// Log output constants
+const (
+	logOutputStdout = "stdout"
+	logOutputStderr = "stderr"
+)
+
+// Log level constants
+const (
+	logLevelDebug = "DEBUG"
+	logLevelWarn  = "WARN"
+)
+
+// Log encoding constants
+const (
+	logEncodingConsole = "console"
+)
+
 // LogConfig defines the configuration for structured logging using slog.
 type LogConfig struct {
 	// Level is the log level (DEBUG, INFO, WARN, ERROR)
@@ -67,9 +84,9 @@ func newLogger(cfg LogConfig) (*slog.Logger, error) {
 		out = os.Stdout
 	case 1: // performance optimization to avoid a loop
 		switch cfg.OutputPaths[0] {
-		case "stdout", "":
+		case logOutputStdout, "":
 			out = os.Stdout
-		case "stderr":
+		case logOutputStderr:
 			out = os.Stderr
 		default:
 			// Use rotating logger for file outputs
@@ -87,9 +104,9 @@ func newLogger(cfg LogConfig) (*slog.Logger, error) {
 		writers := make([]io.Writer, 0, len(cfg.OutputPaths))
 		for _, path := range cfg.OutputPaths {
 			switch path {
-			case "stdout", "":
+			case logOutputStdout, "":
 				writers = append(writers, os.Stdout)
-			case "stderr":
+			case logOutputStderr:
 				writers = append(writers, os.Stderr)
 			default:
 				// Use rotating logger for file outputs
@@ -109,9 +126,9 @@ func newLogger(cfg LogConfig) (*slog.Logger, error) {
 	// Parse the log level
 	level := slog.LevelInfo
 	switch cfg.Level {
-	case "DEBUG":
+	case logLevelDebug:
 		level = slog.LevelDebug
-	case "WARN":
+	case logLevelWarn:
 		level = slog.LevelWarn
 	case "ERROR":
 		level = slog.LevelError
@@ -126,7 +143,7 @@ func newLogger(cfg LogConfig) (*slog.Logger, error) {
 		},
 	}
 
-	if cfg.Encoding == "console" {
+	if cfg.Encoding == logEncodingConsole {
 		handler = slog.NewTextHandler(out, opts)
 	} else {
 		handler = slog.NewJSONHandler(out, opts)
