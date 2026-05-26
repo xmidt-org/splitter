@@ -313,18 +313,19 @@ func WithSASLConfig(s *SASLConfig) Option {
 			return errors.New("sasl password is required")
 		}
 
+		var opt Option
 		switch s.Mechanism {
 		case "PLAIN":
-			WithSASLPlain(s.Username, s.Password)
-		case "SCRAM-SHA-256": //"SCRAM-SHA-256", "SCRAM-SHA-512":
-			WithSASLScram256(s.Username, s.Password)
+			opt = WithSASLPlain(s.Username, s.Password)
+		case "SCRAM-SHA-256":
+			opt = WithSASLScram256(s.Username, s.Password)
 		case "SCRAM-SHA-512":
-			WithSASLScram512(s.Username, s.Password)
+			opt = WithSASLScram512(s.Username, s.Password)
 		default:
 			return fmt.Errorf("unsupported sasl mechanism: %s", s.Mechanism)
 		}
 
-		return nil
+		return opt.apply(c)
 	})
 }
 

@@ -310,6 +310,7 @@ func (s *OptionsTestSuite) TestWithSASLConfig_Nil() {
 	)
 	s.NoError(err)
 	s.NotNil(consumer)
+	// Nil config should not add any options
 }
 
 func (s *OptionsTestSuite) TestWithSASLConfig_PLAIN() {
@@ -322,6 +323,7 @@ func (s *OptionsTestSuite) TestWithSASLConfig_PLAIN() {
 	)
 	s.NoError(err)
 	s.NotNil(consumer)
+	s.NotEmpty(consumer.config.kgoOpts, "SASL PLAIN should add kgo options")
 }
 
 func (s *OptionsTestSuite) TestWithSASLConfig_SCRAM256() {
@@ -334,6 +336,7 @@ func (s *OptionsTestSuite) TestWithSASLConfig_SCRAM256() {
 	)
 	s.NoError(err)
 	s.NotNil(consumer)
+	s.NotEmpty(consumer.config.kgoOpts, "SASL SCRAM-SHA-256 should add kgo options")
 }
 
 func (s *OptionsTestSuite) TestWithSASLConfig_SCRAM512() {
@@ -346,6 +349,7 @@ func (s *OptionsTestSuite) TestWithSASLConfig_SCRAM512() {
 	)
 	s.NoError(err)
 	s.NotNil(consumer)
+	s.NotEmpty(consumer.config.kgoOpts, "SASL SCRAM-SHA-512 should add kgo options")
 }
 
 func (s *OptionsTestSuite) TestWithSASLConfig_InvalidMechanism() {
