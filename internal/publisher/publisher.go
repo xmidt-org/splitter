@@ -18,9 +18,10 @@ import (
 	"github.com/xmidt-org/wrpkafka"
 )
 
-const (
-	errorTypeNone = "none"
-)
+// Unused constant - kept for potential future use
+// const (
+// 	errorTypeNone = "none" //nolint:unused
+// )
 
 var (
 	ErrPublisherNotStarted     = errors.New("publisher is not started")

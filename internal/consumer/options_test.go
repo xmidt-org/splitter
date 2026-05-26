@@ -26,6 +26,7 @@ const (
 	testSASLMechanismPlain = "PLAIN"
 	testTopicGeneric       = "topic"
 	testGroupGeneric       = "group"
+	testUsername           = "user"
 )
 
 type OptionsTestSuite struct {
@@ -286,7 +287,7 @@ func (s *OptionsTestSuite) TestWithAutoCommitInterval() {
 
 func (s *OptionsTestSuite) TestWithSASLPlain() {
 	consumer, err := s.createTestConsumer(
-		WithSASLPlain("user", testPassword),
+		WithSASLPlain(testUsername, testPassword),
 	)
 	s.NoError(err)
 	s.NotNil(consumer)
@@ -295,7 +296,7 @@ func (s *OptionsTestSuite) TestWithSASLPlain() {
 
 func (s *OptionsTestSuite) TestWithSASLScram256() {
 	consumer, err := s.createTestConsumer(
-		WithSASLScram256("user", testPassword),
+		WithSASLScram256(testUsername, testPassword),
 	)
 	s.NoError(err)
 	s.NotNil(consumer)
@@ -304,7 +305,7 @@ func (s *OptionsTestSuite) TestWithSASLScram256() {
 
 func (s *OptionsTestSuite) TestWithSASLScram512() {
 	consumer, err := s.createTestConsumer(
-		WithSASLScram512("user", testPassword),
+		WithSASLScram512(testUsername, testPassword),
 	)
 	s.NoError(err)
 	s.NotNil(consumer)
@@ -324,7 +325,7 @@ func (s *OptionsTestSuite) TestWithSASLConfig_PLAIN() {
 	consumer, err := s.createTestConsumer(
 		WithSASLConfig(&SASLConfig{
 			Mechanism: testSASLMechanismPlain,
-			Username:  "user",
+			Username:  testUsername,
 			Password:  testPassword,
 		}),
 	)
@@ -337,7 +338,7 @@ func (s *OptionsTestSuite) TestWithSASLConfig_SCRAM256() {
 	consumer, err := s.createTestConsumer(
 		WithSASLConfig(&SASLConfig{
 			Mechanism: "SCRAM-SHA-256",
-			Username:  "user",
+			Username:  testUsername,
 			Password:  testPassword,
 		}),
 	)
@@ -350,7 +351,7 @@ func (s *OptionsTestSuite) TestWithSASLConfig_SCRAM512() {
 	consumer, err := s.createTestConsumer(
 		WithSASLConfig(&SASLConfig{
 			Mechanism: "SCRAM-SHA-512",
-			Username:  "user",
+			Username:  testUsername,
 			Password:  testPassword,
 		}),
 	)
@@ -363,7 +364,7 @@ func (s *OptionsTestSuite) TestWithSASLConfig_InvalidMechanism() {
 	consumer, err := s.createTestConsumer(
 		WithSASLConfig(&SASLConfig{
 			Mechanism: "INVALID",
-			Username:  "user",
+			Username:  testUsername,
 			Password:  testPassword,
 		}),
 	)
@@ -389,7 +390,7 @@ func (s *OptionsTestSuite) TestWithSASLConfig_MissingPassword() {
 	consumer, err := s.createTestConsumer(
 		WithSASLConfig(&SASLConfig{
 			Mechanism: testSASLMechanismPlain,
-			Username:  "user",
+			Username:  testUsername,
 			Password:  "",
 		}),
 	)

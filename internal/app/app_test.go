@@ -33,6 +33,19 @@ import (
 	"github.com/xmidt-org/wrpkafka"
 )
 
+// Test constants
+const (
+	testSuccess        = "Success"
+	testRegionUsEast1  = "us-east-1"
+	testBroker         = "localhost:9092"
+	testTopicWrpEvents = "wrp-events"
+	testNamespaceXmidt = "xmidt"
+	testNamespace      = "test_namespace"
+	testSubsystem      = "test_subsystem"
+	testValidYaml      = "test-valid.yaml"
+	testBaseYaml       = "base.yaml"
+)
+
 // Comprehensive tests for CLI provider functions
 func TestProvideCLI(t *testing.T) {
 	testCases := []struct {
@@ -306,7 +319,7 @@ func TestProvidePublisher(t *testing.T) {
 		verify      func(*testing.T, PublisherOut)
 	}{
 		{
-			name: "Success",
+			name: testSuccess,
 			setupConfig: func() PublisherIn {
 				logEmitter := observe.NewSubject[log.Event]()
 				metricEmitter := observe.NewSubject[metrics.Event]()
@@ -315,14 +328,14 @@ func TestProvidePublisher(t *testing.T) {
 					Config: publisher.Config{
 						Brokers: publisher.Brokers{
 							RestartOnConfigChange: false,
-							TargetRegion:          "us-east-1",
+							TargetRegion:          testRegionUsEast1,
 							Regions: map[string][]string{
-								"us-east-1": {"localhost:9092"},
+								testRegionUsEast1: {testBroker},
 							},
 						},
 						TopicRoutes: []publisher.TopicRoute{
 							{
-								Topic:   "wrp-events",
+								Topic:   testTopicWrpEvents,
 								Pattern: "*",
 							},
 						},
@@ -336,7 +349,7 @@ func TestProvidePublisher(t *testing.T) {
 					LogEmitter:    logEmitter,
 					MetricEmitter: metricEmitter,
 					PrometheusConfig: touchstone.Config{
-						DefaultNamespace: "xmidt",
+						DefaultNamespace: testNamespaceXmidt,
 						DefaultSubsystem: "splitter",
 					},
 				}
@@ -357,14 +370,14 @@ func TestProvidePublisher(t *testing.T) {
 					Config: publisher.Config{
 						Brokers: publisher.Brokers{
 							RestartOnConfigChange: false,
-							TargetRegion:          "us-east-1",
+							TargetRegion:          testRegionUsEast1,
 							Regions: map[string][]string{
-								"us-east-1": {"localhost:9092"},
+								testRegionUsEast1: {testBroker},
 							},
 						},
 						TopicRoutes: []publisher.TopicRoute{
 							{
-								Topic:   "wrp-events",
+								Topic:   testTopicWrpEvents,
 								Pattern: "*",
 							},
 						},
@@ -372,8 +385,8 @@ func TestProvidePublisher(t *testing.T) {
 					LogEmitter:    logEmitter,
 					MetricEmitter: metricEmitter,
 					PrometheusConfig: touchstone.Config{
-						DefaultNamespace: "test_namespace",
-						DefaultSubsystem: "test_subsystem",
+						DefaultNamespace: testNamespace,
+						DefaultSubsystem: testSubsystem,
 					},
 				}
 			},
@@ -395,14 +408,14 @@ func TestProvidePublisher(t *testing.T) {
 					Config: publisher.Config{
 						Brokers: publisher.Brokers{
 							RestartOnConfigChange: false,
-							TargetRegion:          "us-east-1",
+							TargetRegion:          testRegionUsEast1,
 							Regions: map[string][]string{
-								"us-east-1": {"localhost:9092"},
+								testRegionUsEast1: {testBroker},
 							},
 						},
 						TopicRoutes: []publisher.TopicRoute{
 							{
-								Topic:   "wrp-events",
+								Topic:   testTopicWrpEvents,
 								Pattern: "*",
 							},
 						},
@@ -434,12 +447,12 @@ func TestProvidePublisher(t *testing.T) {
 							RestartOnConfigChange: false,
 							TargetRegion:          "nonexistent-region",
 							Regions: map[string][]string{
-								"us-east-1": {"localhost:9092"},
+								testRegionUsEast1: {testBroker},
 							},
 						}, // Target region not in regions map should cause validation error
 						TopicRoutes: []publisher.TopicRoute{
 							{
-								Topic:   "wrp-events",
+								Topic:   testTopicWrpEvents,
 								Pattern: "*",
 							},
 						},
@@ -447,7 +460,7 @@ func TestProvidePublisher(t *testing.T) {
 					LogEmitter:    logEmitter,
 					MetricEmitter: metricEmitter,
 					PrometheusConfig: touchstone.Config{
-						DefaultNamespace: "xmidt",
+						DefaultNamespace: testNamespaceXmidt,
 						DefaultSubsystem: "splitter",
 					},
 				}
@@ -489,14 +502,14 @@ func TestProvideConsumer(t *testing.T) {
 		pubConfig := publisher.Config{
 			Brokers: publisher.Brokers{
 				RestartOnConfigChange: false,
-				TargetRegion:          "us-east-1",
+				TargetRegion:          testRegionUsEast1,
 				Regions: map[string][]string{
-					"us-east-1": {"localhost:9092"},
+					testRegionUsEast1: {testBroker},
 				},
 			},
 			TopicRoutes: []publisher.TopicRoute{
 				{
-					Topic:   "wrp-events",
+					Topic:   testTopicWrpEvents,
 					Pattern: "*",
 					HashKey: "source",
 				},
@@ -542,14 +555,14 @@ func TestProvideConsumer(t *testing.T) {
 		description string
 	}{
 		{
-			name: "Success",
+			name: testSuccess,
 			setupConfig: func() ConsumerIn {
 				logEmitter := observe.NewSubject[log.Event]()
 				metricEmitter := observe.NewSubject[metrics.Event]()
 
 				return ConsumerIn{
 					Config: consumer.Config{
-						Brokers:           []string{"localhost:9092"},
+						Brokers:           []string{testBroker},
 						Topics:            []string{"wrp-inbound"},
 						GroupID:           "splitter-group",
 						ClientID:          "splitter-client",
@@ -583,13 +596,13 @@ func TestProvideConsumer(t *testing.T) {
 
 				return ConsumerIn{
 					Config: consumer.Config{
-						Brokers: []string{"localhost:9092"},
+						Brokers: []string{testBroker},
 						Topics:  []string{}, // Empty topics should cause validation error
 						GroupID: "splitter-group",
 					},
 					BucketConfig: createValidBucketConfig(),
 					PrometheusConfig: touchstone.Config{
-						DefaultNamespace: "xmidt",
+						DefaultNamespace: testNamespaceXmidt,
 						DefaultSubsystem: "test",
 					},
 					PrometheusRegisterer: prometheus.NewRegistry(),
@@ -914,11 +927,11 @@ func TestProvideConfig(t *testing.T) {
 		{
 			name: "WithValidConfigFile",
 			setupCLI: func() *CLI {
-				return &CLI{Files: []string{"test-valid.yaml"}}
+				return &CLI{Files: []string{testValidYaml}}
 			},
-			setupFiles: []string{"test-valid.yaml"},
+			setupFiles: []string{testValidYaml},
 			fileContents: map[string]string{
-				"test-valid.yaml": `
+				testValidYaml: `
 consumer:
   brokers:
     - localhost:9092
@@ -941,11 +954,11 @@ producer:
 		{
 			name: "WithMultipleFiles",
 			setupCLI: func() *CLI {
-				return &CLI{Files: []string{"base.yaml", "override.yaml"}}
+				return &CLI{Files: []string{testBaseYaml, "override.yaml"}}
 			},
-			setupFiles: []string{"base.yaml", "override.yaml"},
+			setupFiles: []string{testBaseYaml, "override.yaml"},
 			fileContents: map[string]string{
-				"base.yaml": `
+				testBaseYaml: `
 consumer:
   brokers:
     - localhost:9092
