@@ -14,12 +14,12 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go v0.42.0
 	github.com/testcontainers/testcontainers-go/modules/kafka v0.42.0
-	github.com/twmb/franz-go v1.21.2
+	github.com/twmb/franz-go v1.21.3
 	github.com/twmb/franz-go/pkg/kmsg v1.13.1
 	github.com/twmb/franz-go/plugin/kprom v1.4.0
 	github.com/xmidt-org/httpaux v0.4.3
 	github.com/xmidt-org/wrp-go/v5 v5.4.2
-	github.com/xmidt-org/wrpkafka v0.1.19
+	github.com/xmidt-org/wrpkafka v0.1.21
 	go.uber.org/fx v1.24.0
 	gopkg.in/dealancer/validate.v2 v2.1.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
