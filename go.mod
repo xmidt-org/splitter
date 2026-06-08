@@ -14,7 +14,7 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go v0.42.0
 	github.com/testcontainers/testcontainers-go/modules/kafka v0.42.0
-	github.com/twmb/franz-go v1.21.2
+	github.com/twmb/franz-go v1.21.3
 	github.com/twmb/franz-go/pkg/kmsg v1.13.1
 	github.com/twmb/franz-go/plugin/kprom v1.4.0
 	github.com/xmidt-org/httpaux v0.4.3
