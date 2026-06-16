@@ -24,6 +24,7 @@ type Config struct {
 	RequestTimeout         time.Duration
 	CleanupTimeout         time.Duration
 	RequestRetries         int
+	RecordRetries          int
 	MaxBufferedRecords     int
 	MaxBufferedBytes       int
 	AllowAutoTopicCreation bool

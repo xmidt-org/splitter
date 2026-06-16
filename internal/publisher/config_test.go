@@ -429,15 +429,26 @@ func (suite *OptionsTestSuite) TestOptions() {
 			description: "Should set cleanup timeout correctly",
 		},
 		{
-			name:   "WithMaxRetries",
-			option: WithMaxRetries(5),
+			name:   "WithMaxRequestRetries",
+			option: WithMaxRequestRetries(5),
 			setupPub: func() *KafkaPublisher {
 				return &KafkaPublisher{config: &publisherConfig{}}
 			},
 			verifyPub: func(p *KafkaPublisher) {
-				suite.Equal(5, p.config.maxRetries)
+				suite.Equal(5, p.config.maxRequestRetries)
 			},
 			description: "Should set max retries correctly",
+		},
+		{
+			name:   "WithMaxRecordRetries",
+			option: WithMaxRecordRetries(3),
+			setupPub: func() *KafkaPublisher {
+				return &KafkaPublisher{config: &publisherConfig{}}
+			},
+			verifyPub: func(p *KafkaPublisher) {
+				suite.Equal(3, p.config.maxRecordRetries)
+			},
+			description: "Should set max record retries correctly",
 		},
 		{
 			name:   "WithAllowAutoTopicCreation_true",

@@ -58,7 +58,8 @@ func providePublisher(in PublisherIn) (PublisherOut, error) {
 		publisher.WithMaxBufferedBytes(cfg.MaxBufferedBytes),
 		publisher.WithRequestTimeout(cfg.RequestTimeout),
 		publisher.WithCleanupTimeout(cfg.CleanupTimeout),
-		publisher.WithMaxRetries(cfg.RequestRetries),
+		publisher.WithMaxRequestRetries(cfg.RequestRetries),
+		publisher.WithMaxRecordRetries(cfg.RecordRetries),
 		publisher.WithAllowAutoTopicCreation(cfg.AllowAutoTopicCreation),
 
 		// SASL authentication (uses config-aware wrapper)

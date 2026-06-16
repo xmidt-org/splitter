@@ -122,7 +122,7 @@ func (suite *PublisherTestSuite) TestNew() {
 				WithMaxBufferedBytes(1024 * 1024),
 				WithRequestTimeout(30 * time.Second),
 				WithCleanupTimeout(10 * time.Second),
-				WithMaxRetries(3),
+				WithMaxRequestRetries(3),
 				WithAllowAutoTopicCreation(true),
 			},
 			expectError: false,
