@@ -78,6 +78,10 @@ producer:
   #   key_file: "/path/to/client-key.pem"
   #   insecure_skip_verify: false
 
+  # Retry configuration
+  # request_retries: 3  # Number of retries for failed requests
+  # record_retries: 3   # Number of retries for failed records
+
 # Kafka Consumer Configuration
 consumer:
   # Required: List of Kafka broker addresses

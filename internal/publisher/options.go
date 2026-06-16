@@ -53,7 +53,8 @@ type publisherConfig struct {
 	maxBufferedBytes       int
 	requestTimeout         time.Duration
 	cleanupTimeout         time.Duration
-	maxRetries             int
+	maxRequestRetries      int
+	maxRecordRetries       int
 	allowAutoTopicCreation bool
 	logger                 kgo.Logger
 	publishEventListeners  []func(*wrpkafka.PublishEvent)
@@ -173,10 +174,18 @@ func WithCleanupTimeout(timeout time.Duration) Option {
 	})
 }
 
-// WithMaxRetries sets the number of retries for failed requests.
-func WithMaxRetries(retries int) Option {
+// WithMaxRequestRetries sets the number of retries for failed requests.
+func WithMaxRequestRetries(retries int) Option {
 	return optionFunc(func(p *KafkaPublisher) error {
-		p.config.maxRetries = retries
+		p.config.maxRequestRetries = retries
+		return nil
+	})
+}
+
+// WithMaxRecordRetries sets the number of retries for failed records.
+func WithMaxRecordRetries(retries int) Option {
+	return optionFunc(func(p *KafkaPublisher) error {
+		p.config.maxRecordRetries = retries
 		return nil
 	})
 }
