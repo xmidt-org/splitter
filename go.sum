@@ -211,8 +211,8 @@ github.com/xmidt-org/touchstone v0.1.8 h1:jpA7j2pPtuP6hFr/LcT25cvfYkztWOp3Tj1ZCv
 github.com/xmidt-org/touchstone v0.1.8/go.mod h1:3nKZJlgWCDDThy/djXF2/wiwmRyCcDBSWBrSuUSy3ME=
 github.com/xmidt-org/wrp-go/v3 v3.7.0 h1:m9ghdq79Zzb0WjomUJ02rzFpI0RK8KTjArYpNIwx1fc=
 github.com/xmidt-org/wrp-go/v3 v3.7.0/go.mod h1:eyMj+q/7LQ4SU6Z3s6VOwuTVSh6/DJBb2soBGBFSung=
-github.com/xmidt-org/wrp-go/v5 v5.4.2 h1:SyL4tphp6+eWCdcYMVrQgx7CZyZCBI0+DB2d6WqeD5M=
-github.com/xmidt-org/wrp-go/v5 v5.4.2/go.mod h1:7sr9aQlks68nZkRRnd7HMhe95vDscG4VAvilI6cHGhw=
+github.com/xmidt-org/wrp-go/v5 v5.4.3 h1:w3MnJqO99jse2ZZhvXSxPU0cu5A2oOvD73pLE4p8dns=
+github.com/xmidt-org/wrp-go/v5 v5.4.3/go.mod h1:7sr9aQlks68nZkRRnd7HMhe95vDscG4VAvilI6cHGhw=
 github.com/xmidt-org/wrpkafka v0.1.22 h1:64jCHv/qax9iOdDx7i2lrD5L8s+sObjGfgUzWZU8lb0=
 github.com/xmidt-org/wrpkafka v0.1.22/go.mod h1:1SNKYC/yFbKNnLe7BLtF5YlexJWcblTHe9OaAUaspTU=
 github.com/yusufpapurcu/wmi v1.2.4 h1:zFUKzehAFReQwLys1b/iSMl+JQGSCSjtVqQn9bBrPo0=
