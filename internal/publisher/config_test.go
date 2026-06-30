@@ -418,6 +418,17 @@ func (suite *OptionsTestSuite) TestOptions() {
 			description: "Should set request timeout correctly",
 		},
 		{
+			name:   "WithRecordDeliveryTimeout",
+			option: WithRecordDeliveryTimeout(60 * time.Second),
+			setupPub: func() *KafkaPublisher {
+				return &KafkaPublisher{config: &publisherConfig{}}
+			},
+			verifyPub: func(p *KafkaPublisher) {
+				suite.Equal(60*time.Second, p.config.recordDeliveryTimeout)
+			},
+			description: "Should set record delivery timeout correctly",
+		},
+		{
 			name:   "WithCleanupTimeout",
 			option: WithCleanupTimeout(15 * time.Second),
 			setupPub: func() *KafkaPublisher {

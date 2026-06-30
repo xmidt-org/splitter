@@ -81,6 +81,11 @@ producer:
   # Retry configuration
   # request_retries: 3  # Number of retries for failed requests
   # record_retries: 3   # Number of retries for failed records
+  
+  # Timeout configuration
+  # request_timeout: 30s  # Maximum time to wait for broker responses
+  # record_delivery_timeout: 0s  # Maximum time a record can remain buffered before timing out (0 = no timeout)
+  # cleanup_timeout: 10s  # Maximum time to wait for buffered messages to flush on shutdown
 
 # Kafka Consumer Configuration
 consumer:
