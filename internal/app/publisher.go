@@ -57,6 +57,7 @@ func providePublisher(in PublisherIn) (PublisherOut, error) {
 		publisher.WithMaxBufferedRecords(cfg.MaxBufferedRecords),
 		publisher.WithMaxBufferedBytes(cfg.MaxBufferedBytes),
 		publisher.WithRequestTimeout(cfg.RequestTimeout),
+		publisher.WithRecordDeliveryTimeout(cfg.RecordDeliveryTimeout),
 		publisher.WithCleanupTimeout(cfg.CleanupTimeout),
 		publisher.WithMaxRequestRetries(cfg.RequestRetries),
 		publisher.WithMaxRecordRetries(cfg.RecordRetries),

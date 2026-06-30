@@ -22,6 +22,7 @@ type Config struct {
 
 	// Connection and retry settings
 	RequestTimeout         time.Duration
+	RecordDeliveryTimeout  time.Duration
 	CleanupTimeout         time.Duration
 	RequestRetries         int
 	RecordRetries          int

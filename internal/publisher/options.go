@@ -52,6 +52,7 @@ type publisherConfig struct {
 	maxBufferedRecords     int
 	maxBufferedBytes       int
 	requestTimeout         time.Duration
+	recordDeliveryTimeout  time.Duration
 	cleanupTimeout         time.Duration
 	maxRequestRetries      int
 	maxRecordRetries       int
@@ -162,6 +163,16 @@ func WithMaxBufferedBytes(maxBytes int) Option {
 func WithRequestTimeout(timeout time.Duration) Option {
 	return optionFunc(func(p *KafkaPublisher) error {
 		p.config.requestTimeout = timeout
+		return nil
+	})
+}
+
+// WithRecordDeliveryTimeout sets the maximum time a record can remain buffered before timing out.
+// When exceeded, the record fails and the error callback fires.
+// Zero or negative values mean no timeout (records can buffer indefinitely).
+func WithRecordDeliveryTimeout(timeout time.Duration) Option {
+	return optionFunc(func(p *KafkaPublisher) error {
+		p.config.recordDeliveryTimeout = timeout
 		return nil
 	})
 }

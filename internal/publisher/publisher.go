@@ -82,6 +82,7 @@ func New(opts ...Option) (*KafkaPublisher, error) {
 		MaxBufferedRecords:           publisher.config.maxBufferedRecords,
 		MaxBufferedBytes:             publisher.config.maxBufferedBytes,
 		RequestTimeout:               publisher.config.requestTimeout,
+		RecordDeliveryTimeout:        publisher.config.recordDeliveryTimeout,
 		CleanupTimeout:               publisher.config.cleanupTimeout,
 		MaxRequestRetries:            publisher.config.maxRequestRetries,
 		MaxRecordRetries:             publisher.config.maxRecordRetries,
