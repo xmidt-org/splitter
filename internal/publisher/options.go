@@ -60,6 +60,9 @@ type publisherConfig struct {
 	logger                 kgo.Logger
 	publishEventListeners  []func(*wrpkafka.PublishEvent)
 	prometheus             *PrometheusConfig
+
+	// DynamicConfig contains all runtime-updatable settings
+	dynamicConfig wrpkafka.DynamicConfig
 }
 
 // validate ensures all required configuration is present.
@@ -341,6 +344,54 @@ func WithPrometheusConfig(config *PrometheusConfig) Option {
 		if config != nil {
 			p.config.prometheus = config
 		}
+		return nil
+	})
+}
+
+// WithDynamicConfig sets the complete dynamic configuration.
+// This includes TopicMap, Headers, CompressionCodec, Linger, and Acks.
+// Note: TopicMap will be overwritten with converted TopicRoutes during publisher creation.
+func WithDynamicConfig(dc wrpkafka.DynamicConfig) Option {
+	return optionFunc(func(p *KafkaPublisher) error {
+		p.config.dynamicConfig = dc
+		return nil
+	})
+}
+
+// WithHeaders sets the Kafka record headers.
+// Multiple values per key are supported.
+func WithHeaders(headers map[string][]string) Option {
+	return optionFunc(func(p *KafkaPublisher) error {
+		if headers != nil {
+			p.config.dynamicConfig.Headers = headers
+		}
+		return nil
+	})
+}
+
+// WithCompressionCodec sets the compression algorithm.
+// Valid values: "snappy", "gzip", "lz4", "zstd", "none".
+func WithCompressionCodec(codec wrpkafka.Compression) Option {
+	return optionFunc(func(p *KafkaPublisher) error {
+		p.config.dynamicConfig.CompressionCodec = codec
+		return nil
+	})
+}
+
+// WithLinger sets the batching delay.
+// Zero or negative values disable lingering.
+func WithLinger(linger time.Duration) Option {
+	return optionFunc(func(p *KafkaPublisher) error {
+		p.config.dynamicConfig.Linger = linger
+		return nil
+	})
+}
+
+// WithAcks sets the broker acknowledgment requirements.
+// Valid values: "all", "leader", "none".
+func WithAcks(acks wrpkafka.Acks) Option {
+	return optionFunc(func(p *KafkaPublisher) error {
+		p.config.dynamicConfig.Acks = acks
 		return nil
 	})
 }

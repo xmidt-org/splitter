@@ -72,11 +72,13 @@ func New(opts ...Option) (*KafkaPublisher, error) {
 	}
 
 	// Create the underlying wrpkafka publisher
+	// Build dynamic config with TopicMap from converted routes
+	dynamicConfig := publisher.config.dynamicConfig
+	dynamicConfig.TopicMap = publisher.config.topicRoutes
+
 	wrpPublisher := &wrpkafka.Publisher{
-		Brokers: publisher.config.brokers.Regions[publisher.config.brokers.TargetRegion],
-		InitialDynamicConfig: wrpkafka.DynamicConfig{
-			TopicMap: publisher.config.topicRoutes,
-		},
+		Brokers:                      publisher.config.brokers.Regions[publisher.config.brokers.TargetRegion],
+		InitialDynamicConfig:         dynamicConfig,
 		SASL:                         publisher.config.sasl,
 		TLS:                          publisher.config.tls,
 		MaxBufferedRecords:           publisher.config.maxBufferedRecords,

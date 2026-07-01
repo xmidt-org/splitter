@@ -4,7 +4,6 @@
 package publisher
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -17,9 +16,6 @@ type Config struct {
 	// Required fields
 	Brokers Brokers
 
-	// Topic routes for WRP message routing
-	TopicRoutes []TopicRoute
-
 	// Connection and retry settings
 	RequestTimeout         time.Duration
 	RecordDeliveryTimeout  time.Duration
@@ -29,6 +25,15 @@ type Config struct {
 	MaxBufferedRecords     int
 	MaxBufferedBytes       int
 	AllowAutoTopicCreation bool
+
+	// DynamicConfig contains runtime-updatable Kafka producer settings
+	// This includes all wrpkafka.DynamicConfig fields:
+	//   - TopicMap: routing rules for WRP message routing
+	//   - Headers: Kafka record headers
+	//   - CompressionCodec: compression algorithm
+	//   - Linger: batching delay
+	//   - Acks: broker acknowledgment requirements
+	DynamicConfig wrpkafka.DynamicConfig `yaml:"dynamic_config,omitempty"`
 
 	// SASL authentication
 	SASL *SASLConfig
@@ -44,41 +49,6 @@ type Brokers struct {
 	RestartOnConfigChange bool
 	TargetRegion          string
 	Regions               map[string][]string
-}
-
-// TopicRoute represents a WRP message routing configuration
-type TopicRoute struct {
-	Topic   string
-	Pattern string
-	HashKey string
-}
-
-// ToWRPKafkaRoute converts a TopicRoute to a wrpkafka.TopicRoute
-func (tr TopicRoute) ToWRPKafkaRoute() (wrpkafka.TopicRoute, error) {
-	hashKey, err := wrpkafka.ParseHashKey(tr.HashKey)
-	if err != nil {
-		return wrpkafka.TopicRoute{}, fmt.Errorf("failed to parse hash key %q: %w", tr.HashKey, err)
-	}
-
-	route := wrpkafka.TopicRoute{
-		Topic:   tr.Topic,
-		Pattern: wrpkafka.Pattern(tr.Pattern),
-		HashKey: hashKey,
-	}
-	return route, nil
-}
-
-// ToWRPKafkaRoutes converts all TopicRoutes to wrpkafka.TopicRoute slice
-func (c Config) ToWRPKafkaRoutes() ([]wrpkafka.TopicRoute, error) {
-	routes := make([]wrpkafka.TopicRoute, len(c.TopicRoutes))
-	for i, route := range c.TopicRoutes {
-		wrpRoute, err := route.ToWRPKafkaRoute()
-		if err != nil {
-			return nil, fmt.Errorf("failed to convert route %d: %w", i, err)
-		}
-		routes[i] = wrpRoute
-	}
-	return routes, nil
 }
 
 // SASLConfig represents SASL authentication configuration
