@@ -26,13 +26,19 @@ producer((replace)):
     regions:
       local:
         - "${KAFKA_BROKERS}"
-  topic_routes:
-    - pattern: "*"
-      topic: "default-events"
-      hash_key: "source"  # Extract device ID from source field
-    - pattern: "device-status"
-      topic: "device-status-events"
-      hash_key: "source"  # Extract device ID from source field
+  dynamic_config:
+    topic_map:
+      - pattern: "*"
+        topic: "default-events"
+        hash_key:
+          name: "source"  # Extract device ID from source field
+      - pattern: "device-status"
+        topic: "device-status-events"
+        hash_key:
+          name: "source"  # Extract device ID from source field
+    acks: "all"
+    linger: 0s
+    compression_codec: "none"
 
 buckets:
   possible_buckets:

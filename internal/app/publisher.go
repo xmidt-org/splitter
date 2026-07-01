@@ -37,12 +37,6 @@ func providePublisher(in PublisherIn) (PublisherOut, error) {
 	cfg := in.Config
 	prometheusCfg := in.PrometheusConfig
 
-	// Convert config routes to wrpkafka routes
-	wrpRoutes, err := cfg.ToWRPKafkaRoutes()
-	if err != nil {
-		return PublisherOut{}, fmt.Errorf("failed to convert topic routes: %w", err)
-	}
-
 	// Build options from configuration - validation is handled by the option functions
 	opts := []publisher.Option{
 		// Observability
@@ -51,7 +45,7 @@ func providePublisher(in PublisherIn) (PublisherOut, error) {
 
 		// Required options
 		publisher.WithBrokers(cfg.Brokers),
-		publisher.WithTopicRoutes(wrpRoutes...),
+		publisher.WithTopicRoutes(cfg.DynamicConfig.TopicMap...),
 
 		// Optional configurations
 		publisher.WithMaxBufferedRecords(cfg.MaxBufferedRecords),
@@ -62,6 +56,9 @@ func providePublisher(in PublisherIn) (PublisherOut, error) {
 		publisher.WithMaxRequestRetries(cfg.RequestRetries),
 		publisher.WithMaxRecordRetries(cfg.RecordRetries),
 		publisher.WithAllowAutoTopicCreation(cfg.AllowAutoTopicCreation),
+
+		// DynamicConfig - runtime-updatable producer settings
+		publisher.WithDynamicConfig(cfg.DynamicConfig),
 
 		// SASL authentication (uses config-aware wrapper)
 		publisher.WithSASLConfig(cfg.SASL),

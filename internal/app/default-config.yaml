@@ -51,10 +51,19 @@ buckets:
   missing_partition_key_action: "include" # "include" (default), "drop"
 
 producer:
-  topic_routes:
-    - pattern: "*"
-      topic: "default-events"
-      hash_key: "metadata/hw-deviceid"  # Use hardware device ID from metadata for partitioning
+  dynamic_config:
+    topic_map:
+      - pattern: "*"
+        topic: "default-events"
+        hash_key:
+          name: "metadata"
+          metadata_field: "hw-deviceid"  # Use hardware device ID from metadata for partitioning
+    # Optional dynamic configuration:
+    # acks: "all"  # "all", "leader", "none"
+    # linger: 100ms  # Batching delay
+    # compression_codec: "snappy"  # "snappy", "gzip", "lz4", "zstd", "none"
+    # headers:
+    #   x-source: ["splitter"]
   brokers:
     restart_on_config_change: false
     target_region: us-east-1

@@ -334,10 +334,12 @@ func TestProvidePublisher(t *testing.T) {
 								testRegionUsEast1: {testBroker},
 							},
 						},
-						TopicRoutes: []publisher.TopicRoute{
-							{
-								Topic:   testTopicWrpEvents,
-								Pattern: "*",
+						DynamicConfig: wrpkafka.DynamicConfig{
+							TopicMap: []wrpkafka.TopicRoute{
+								{
+									Topic:   testTopicWrpEvents,
+									Pattern: "*",
+								},
 							},
 						},
 						MaxBufferedRecords:     1000,
@@ -376,10 +378,12 @@ func TestProvidePublisher(t *testing.T) {
 								testRegionUsEast1: {testBroker},
 							},
 						},
-						TopicRoutes: []publisher.TopicRoute{
-							{
-								Topic:   testTopicWrpEvents,
-								Pattern: "*",
+						DynamicConfig: wrpkafka.DynamicConfig{
+							TopicMap: []wrpkafka.TopicRoute{
+								{
+									Topic:   testTopicWrpEvents,
+									Pattern: "*",
+								},
 							},
 						},
 					},
@@ -414,10 +418,12 @@ func TestProvidePublisher(t *testing.T) {
 								testRegionUsEast1: {testBroker},
 							},
 						},
-						TopicRoutes: []publisher.TopicRoute{
-							{
-								Topic:   testTopicWrpEvents,
-								Pattern: "*",
+						DynamicConfig: wrpkafka.DynamicConfig{
+							TopicMap: []wrpkafka.TopicRoute{
+								{
+									Topic:   testTopicWrpEvents,
+									Pattern: "*",
+								},
 							},
 						},
 					},
@@ -451,10 +457,12 @@ func TestProvidePublisher(t *testing.T) {
 								testRegionUsEast1: {testBroker},
 							},
 						}, // Target region not in regions map should cause validation error
-						TopicRoutes: []publisher.TopicRoute{
-							{
-								Topic:   testTopicWrpEvents,
-								Pattern: "*",
+						DynamicConfig: wrpkafka.DynamicConfig{
+							TopicMap: []wrpkafka.TopicRoute{
+								{
+									Topic:   testTopicWrpEvents,
+									Pattern: "*",
+								},
 							},
 						},
 					},
@@ -508,23 +516,22 @@ func TestProvideConsumer(t *testing.T) {
 					testRegionUsEast1: {testBroker},
 				},
 			},
-			TopicRoutes: []publisher.TopicRoute{
-				{
-					Topic:   testTopicWrpEvents,
-					Pattern: "*",
-					HashKey: "source",
+			DynamicConfig: wrpkafka.DynamicConfig{
+				TopicMap: []wrpkafka.TopicRoute{
+					{
+						Topic:   testTopicWrpEvents,
+						Pattern: "*",
+						HashKey: wrpkafka.HashKey{Name: wrpkafka.HashKeySource},
+					},
 				},
 			},
 		}
-
-		routes, err := pubConfig.ToWRPKafkaRoutes()
-		require.NoError(t, err, "Setup should convert routes successfully")
 
 		pub, err := publisher.New(
 			publisher.WithLogEmitter(logEmitter),
 			publisher.WithMetricsEmitter(metricEmitter),
 			publisher.WithBrokers(pubConfig.Brokers),
-			publisher.WithTopicRoutes(routes...),
+			publisher.WithTopicRoutes(pubConfig.DynamicConfig.TopicMap...),
 		)
 		require.NoError(t, err, "Setup should create publisher successfully")
 		return pub
