@@ -1,6 +1,6 @@
 module xmidt-org/splitter
 
-go 1.26
+go 1.26.5
 
 require (
 	github.com/alecthomas/kong v1.16.0
@@ -18,7 +18,7 @@ require (
 	github.com/twmb/franz-go/pkg/kmsg v1.13.1
 	github.com/twmb/franz-go/plugin/kprom v1.5.0
 	github.com/xmidt-org/httpaux v0.4.3
-	github.com/xmidt-org/wrp-go/v5 v5.4.3
+	github.com/xmidt-org/wrp-go/v5 v5.4.4
 	github.com/xmidt-org/wrpkafka v0.1.24
 	go.uber.org/fx v1.24.0
 	gopkg.in/dealancer/validate.v2 v2.1.0
