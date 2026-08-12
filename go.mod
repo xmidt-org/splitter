@@ -3,7 +3,7 @@ module xmidt-org/splitter
 go 1.26.5
 
 require (
-	github.com/alecthomas/kong v1.16.0
+	github.com/alecthomas/kong v1.16.1
 	github.com/aviddiviner/go-murmur v0.0.0-20150519214947-b9740d71e571
 	github.com/go-kit/kit v0.13.0
 	github.com/goschtalt/goschtalt v0.28.1
