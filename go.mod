@@ -112,7 +112,7 @@ require (
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/magiconair/properties v1.8.10 // indirect
 	github.com/xmidt-org/arrange v0.5.7
-	github.com/xmidt-org/candlelight v0.2.17
+	github.com/xmidt-org/candlelight v0.2.18
 	github.com/xmidt-org/touchstone v0.1.8
 	go.uber.org/dig v1.19.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
