@@ -15,7 +15,7 @@ require (
 	github.com/testcontainers/testcontainers-go v0.44.0
 	github.com/testcontainers/testcontainers-go/modules/kafka v0.44.0
 	github.com/twmb/franz-go v1.21.6
-	github.com/twmb/franz-go/pkg/kmsg v1.13.1
+	github.com/twmb/franz-go/pkg/kmsg v1.14.0
 	github.com/twmb/franz-go/plugin/kprom v1.5.0
 	github.com/xmidt-org/httpaux v0.4.5
 	github.com/xmidt-org/wrp-go/v5 v5.4.6
