@@ -18,7 +18,7 @@ require (
 	github.com/twmb/franz-go/pkg/kmsg v1.14.0
 	github.com/twmb/franz-go/plugin/kprom v1.5.0
 	github.com/xmidt-org/httpaux v0.4.5
-	github.com/xmidt-org/wrp-go/v5 v5.4.6
+	github.com/xmidt-org/wrp-go/v5 v5.4.7
 	github.com/xmidt-org/wrpkafka v0.1.31
 	go.uber.org/fx v1.24.0
 	gopkg.in/dealancer/validate.v2 v2.1.0
@@ -74,7 +74,7 @@ require (
 	github.com/shirou/gopsutil/v4 v4.26.6 // indirect
 	github.com/sirupsen/logrus v1.9.4 // indirect
 	github.com/stretchr/objx v0.5.3 // indirect
-	github.com/tinylib/msgp v1.6.4 // indirect
+	github.com/tinylib/msgp v1.6.5 // indirect
 	github.com/tklauser/go-sysconf v0.4.0 // indirect
 	github.com/tklauser/numcpus v0.12.0 // indirect
 	github.com/ugorji/go/codec v1.2.12 // indirect
