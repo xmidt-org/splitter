@@ -115,6 +115,9 @@ func provideConsumer(in ConsumerIn) (ConsumerOut, error) {
 		return ConsumerOut{}, fmt.Errorf("failed to create consumer: %w", err)
 	}
 
+	// QoS 0 buffer-full errors only arrive through publish events, not Produce() returns.
+	in.Publisher.AddPublishEventListener(c.HandlePublishEvent)
+
 	return ConsumerOut{Consumer: c}, nil
 }
 
