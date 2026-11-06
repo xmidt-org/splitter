@@ -111,5 +111,8 @@ func (m *MockPublisher) Produce(ctx context.Context, msg *wrp.Message) (wrpkafka
 	args := m.Called(ctx, msg)
 	return args.Get(0).(wrpkafka.Outcome), args.Error(1)
 }
+func (m *MockPublisher) AddPublishEventListener(func(*wrpkafka.PublishEvent)) func() {
+	return func() {}
+}
 func (m *MockPublisher) Start() error                   { return nil }
 func (m *MockPublisher) Stop(ctx context.Context) error { return nil }
