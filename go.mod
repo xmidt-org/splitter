@@ -17,7 +17,7 @@ require (
 	github.com/twmb/franz-go v1.22.2
 	github.com/twmb/franz-go/pkg/kmsg v1.15.0
 	github.com/twmb/franz-go/plugin/kprom v1.5.0
-	github.com/xmidt-org/httpaux v0.4.5
+	github.com/xmidt-org/httpaux v0.4.6
 	github.com/xmidt-org/wrp-go/v5 v5.4.7
 	github.com/xmidt-org/wrpkafka v0.1.31
 	go.uber.org/fx v1.24.0
