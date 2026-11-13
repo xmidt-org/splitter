@@ -107,7 +107,7 @@ require (
 	github.com/goschtalt/approx v1.0.0 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/magiconair/properties v1.18.12 // indirect
-	github.com/xmidt-org/arrange v0.5.10
+	github.com/xmidt-org/arrange v0.5.11
 	github.com/xmidt-org/candlelight v0.4.2
 	github.com/xmidt-org/touchstone v0.1.9
 	go.uber.org/dig v1.19.0 // indirect

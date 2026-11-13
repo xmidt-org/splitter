@@ -169,8 +169,8 @@ github.com/twmb/franz-go/pkg/kmsg v1.15.1 h1:3sj7ekbH33t73nsBcHS0wtp/PyMIViHLNIt
 github.com/twmb/franz-go/pkg/kmsg v1.15.1/go.mod h1:sGkGxKexpRLBThFHJLjjywcyfkK09qB/g+X+wFWZQ/A=
 github.com/twmb/franz-go/plugin/kprom v1.5.0 h1:TL1ybuCfOZSCFbuYB9sPexbDsBDTOQoBH6xxZ3V9icU=
 github.com/twmb/franz-go/plugin/kprom v1.5.0/go.mod h1:5QMSg0mtIjzZiVs+TfaNqZxo4q5tnBivQpc3BjF2lis=
-github.com/xmidt-org/arrange v0.5.10 h1:nB3ufAq8wzZhD7CvJCJWDQ1v+AwMo7TFlR9v7azUQQM=
-github.com/xmidt-org/arrange v0.5.10/go.mod h1:c4aEwqmzU2UaJ8wJ4vW0cV3MWwxwtzvNpss12KN8tkA=
+github.com/xmidt-org/arrange v0.5.11 h1:NwCxEslt8sRN5fCmIsoH3CRu3cVzJhH9QaXSE22DZwg=
+github.com/xmidt-org/arrange v0.5.11/go.mod h1:zzwq31pHeUBocqUCu+91QNNnhJK2CoEVGhlQFsbouO0=
 github.com/xmidt-org/candlelight v0.4.2 h1:MsvITBvPUA7T0TNrYsX6gEUFc7Cq+kbRwkO6J1BRmdY=
 github.com/xmidt-org/candlelight v0.4.2/go.mod h1:34U8aDDMxDUrcF+BlY6cmtw5WUq3PsTUv6Q0r5rV6vE=
 github.com/xmidt-org/eventor v1.0.51 h1:9hIbcsQ/dk/z2+ISOUsA7CcTWeYUoS9DAz0Sk/Ft1hw=
