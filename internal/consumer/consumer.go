@@ -42,6 +42,7 @@ type Consumer interface {
 	Start() error
 	Stop(ctx context.Context) error
 	IsRunning() bool
+	HandlePublishEvent(event *wrpkafka.PublishEvent)
 }
 
 // It manages the consumer lifecycle, message polling, and graceful shutdown.
@@ -64,6 +65,7 @@ type KafkaConsumer struct {
 	resumeDelaySeconds          int
 	isPaused                    atomic.Bool
 	unPauseAt                   atomic.Int64
+	producerBufferFull          atomic.Bool // set while paused for a full producer buffer; resumes on timer only
 }
 
 // New creates a new Consumer with the provided options.
@@ -172,8 +174,8 @@ func (c *KafkaConsumer) Start() error {
 	c.wg.Add(1)
 	go c.pollLoop()
 
-	// only start fetch state manager if thresholds are configured
-	if (c.consecutiveFailureThreshold > 0) && (c.resumeDelaySeconds > 0) {
+	// the manager resumes fetches after a pause, so it needs a resume delay
+	if c.resumeDelaySeconds > 0 {
 		c.wg.Add(1)
 		go c.startManageFetchState()
 	}
@@ -389,6 +391,13 @@ func (c *KafkaConsumer) handleOutcome(outcome Outcome, err error, record *kgo.Re
 }
 
 func (c *KafkaConsumer) handleRetryableError(err error) {
+	// A full producer buffer pauses fetching until the resume timer fires.
+	if errors.Is(err, kgo.ErrMaxBuffered) && c.resumeDelaySeconds > 0 {
+		c.producerBufferFull.Store(true)
+		c.pauseFetchTopics()
+		return
+	}
+
 	// if the error is retryable, increment consecutive failures
 	if isRetryable(err) {
 		c.consecutiveFailures.Add(1)
@@ -437,9 +446,11 @@ func (c *KafkaConsumer) manageFetchState() {
 	consecutiveFailures := c.consecutiveFailures.Load()
 
 	if c.isPaused.Load() {
-		// Resume if: 1) timer expired OR 2) recent success(es)
-		shouldResume := time.Now().After(time.Unix(c.unPauseAt.Load(), 0)) ||
-			consecutiveFailures < int64(c.consecutiveFailureThreshold)
+		// Resume if: 1) timer expired OR 2) recent success(es), unless the buffer is full
+		shouldResume := time.Now().After(time.Unix(c.unPauseAt.Load(), 0))
+		if !c.producerBufferFull.Load() {
+			shouldResume = shouldResume || consecutiveFailures < int64(c.consecutiveFailureThreshold)
+		}
 
 		if shouldResume {
 			c.resumeFetchTopics()
@@ -448,7 +459,7 @@ func (c *KafkaConsumer) manageFetchState() {
 	}
 
 	// Not paused - check if we should pause
-	if consecutiveFailures >= int64(c.consecutiveFailureThreshold) {
+	if c.consecutiveFailureThreshold > 0 && consecutiveFailures >= int64(c.consecutiveFailureThreshold) {
 		c.pauseFetchTopics()
 	}
 }
@@ -457,7 +468,7 @@ func (c *KafkaConsumer) pauseFetchTopics() {
 	if c.isPaused.Load() {
 		return
 	}
-	c.emitLog(log.LevelWarn, "pausing fetches due to sustained publish failures", map[string]any{})
+	c.emitLog(log.LevelWarn, "pausing fetches", map[string]any{"buffer_full": c.producerBufferFull.Load()})
 	c.client.PauseFetchTopics(c.config.topics...)
 	c.isPaused.Store(true)
 	c.unPauseAt.Store(time.Now().Add(time.Duration(c.resumeDelaySeconds) * time.Second).Unix())
@@ -475,6 +486,7 @@ func (c *KafkaConsumer) resumeFetchTopics() {
 	c.emitLog(log.LevelInfo, "resuming fetches after pause", map[string]any{})
 	c.client.ResumeFetchTopics(c.config.topics...)
 	c.isPaused.Store(false)
+	c.producerBufferFull.Store(false)
 	c.metricEmitter.Notify(metrics.Event{
 		Name: metrics.ConsumerPauses,
 		Labels: []string{

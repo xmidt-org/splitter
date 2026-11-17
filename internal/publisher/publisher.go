@@ -31,6 +31,7 @@ var (
 // Interface for dependency injection and testing
 type Publisher interface {
 	Produce(ctx context.Context, msg *wrp.Message) (wrpkafka.Outcome, error)
+	AddPublishEventListener(fn func(*wrpkafka.PublishEvent)) func()
 	Start() error
 	Stop(ctx context.Context) error
 }
@@ -209,6 +210,12 @@ func (p *KafkaPublisher) Stop(ctx context.Context) error {
 	p.logEmitter.Notify(log.NewEvent(log.LevelInfo, "WRP publisher stopped", nil))
 
 	return nil
+}
+
+// AddPublishEventListener registers a listener for async publish results (e.g. buffer full on QoS 0).
+// The returned function removes the listener.
+func (p *KafkaPublisher) AddPublishEventListener(fn func(*wrpkafka.PublishEvent)) func() {
+	return p.wrpPublisher.AddPublishEventListener(fn)
 }
 
 func (p *KafkaPublisher) IsStarted() bool {

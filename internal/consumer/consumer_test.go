@@ -376,14 +376,6 @@ func (s *ConsumerTestSuite) TestHandleOutcome() {
 			expectSuccess:            false,
 			expectHigherFailureCount: true,
 		},
-		{
-			name:                     "failed with buffer full - no commit",
-			outcome:                  Failed,
-			err:                      kgo.ErrMaxBuffered,
-			expectCommit:             false,
-			expectSuccess:            false,
-			expectHigherFailureCount: true,
-		},
 	}
 
 	for _, tt := range tests {
@@ -419,6 +411,41 @@ func (s *ConsumerTestSuite) TestHandleOutcome() {
 			s.mockClient.AssertExpectations(s.T())
 		})
 	}
+}
+
+// TestHandlePublishEventBufferFull tests that a buffer-full publish event pauses fetching
+func (s *ConsumerTestSuite) TestHandlePublishEventBufferFull() {
+	s.mockClient.On("PauseFetchTopics", s.consumer.config.topics).Return()
+	failuresBefore := s.consumer.consecutiveFailures.Load()
+
+	s.consumer.HandlePublishEvent(&wrpkafka.PublishEvent{Topic: testTopicName, Error: kgo.ErrMaxBuffered})
+
+	s.True(s.consumer.isPaused.Load())
+	s.True(s.consumer.producerBufferFull.Load())
+	s.Equal(failuresBefore, s.consumer.consecutiveFailures.Load())
+	s.mockClient.AssertExpectations(s.T())
+}
+
+// TestManageFetchStateBufferPaused tests that a buffer pause resumes only on the timer
+func (s *ConsumerTestSuite) TestManageFetchStateBufferPaused() {
+	s.consumer.isPaused.Store(true)
+	s.consumer.producerBufferFull.Store(true)
+	s.consumer.consecutiveFailures.Store(0)
+
+	s.Run("stays paused before timer expires", func() {
+		s.consumer.unPauseAt.Store(time.Now().Add(30 * time.Second).Unix())
+		s.consumer.manageFetchState()
+		s.True(s.consumer.isPaused.Load())
+	})
+
+	s.Run("resumes after timer expires", func() {
+		s.consumer.unPauseAt.Store(time.Now().Add(-time.Second).Unix())
+		s.mockClient.On("ResumeFetchTopics", s.consumer.config.topics).Return()
+		s.consumer.manageFetchState()
+		s.False(s.consumer.isPaused.Load())
+		s.False(s.consumer.producerBufferFull.Load())
+		s.mockClient.AssertExpectations(s.T())
+	})
 }
 
 // TestIsRetryable tests retry error classification

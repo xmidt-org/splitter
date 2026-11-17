@@ -291,6 +291,10 @@ func (m *MockPublisher) Produce(ctx context.Context, msg *wrp.Message) (wrpkafka
 	return args.Get(0).(wrpkafka.Outcome), args.Error(1)
 }
 
+func (m *MockPublisher) AddPublishEventListener(func(*wrpkafka.PublishEvent)) func() {
+	return func() {}
+}
+
 type MockConsumer struct {
 	mock.Mock
 }
@@ -309,6 +313,8 @@ func (m *MockConsumer) IsRunning() bool {
 	args := m.Called()
 	return args.Bool(0)
 }
+
+func (m *MockConsumer) HandlePublishEvent(*wrpkafka.PublishEvent) {}
 
 // Provider function tests
 func TestProvidePublisher(t *testing.T) {
