@@ -19,8 +19,15 @@ type Metrics struct {
 	PublisherErrorsCounter kit.Counter
 
 	// Kafka publisher metrics (wrpkafka event listeners)
-	KafkaPublished        kit.Counter
-	KafkaPublishLatency   kit.Histogram
+	KafkaPublished      kit.Counter
+	KafkaPublishLatency kit.Histogram
+
+	// Kafka regional failover metrics
+	KafkaRegionFailovers          kit.Counter
+	KafkaRegionCircuitTransitions kit.Counter
+	KafkaRegionCircuitState       kit.Gauge
+	KafkaActiveRegion             kit.Gauge
+
 	Panics                kit.Counter
 	UnknownMetrics        kit.Counter
 	MetricPanics          kit.Counter
@@ -33,18 +40,22 @@ func New(m Metrics) *observe.Subject[Event] {
 
 	// Create observers
 	counterMetrics := map[string]kit.Counter{
-		ConsumerFetchErrors:    m.ConsumerFetchErrors,
-		ConsumerCommitErrors:   m.ConsumerCommitErrors,
-		BucketKeyErrorCount:    m.BucketKeyErrorCount,
-		PublisherOutcomes:      m.PublisherOutcomes,
-		PublisherErrorsCounter: m.PublisherErrorsCounter,
-		KafkaPublished:         m.KafkaPublished,
-		Panics:                 m.Panics,
-		MalformedMessageCount:  m.MalformedMessageCount,
+		ConsumerFetchErrors:           m.ConsumerFetchErrors,
+		ConsumerCommitErrors:          m.ConsumerCommitErrors,
+		BucketKeyErrorCount:           m.BucketKeyErrorCount,
+		PublisherOutcomes:             m.PublisherOutcomes,
+		PublisherErrorsCounter:        m.PublisherErrorsCounter,
+		KafkaPublished:                m.KafkaPublished,
+		KafkaRegionFailovers:          m.KafkaRegionFailovers,
+		KafkaRegionCircuitTransitions: m.KafkaRegionCircuitTransitions,
+		Panics:                        m.Panics,
+		MalformedMessageCount:         m.MalformedMessageCount,
 	}
 
 	gaugeMetrics := map[string]kit.Gauge{
-		ConsumerPauses: m.ConsumerPauses,
+		ConsumerPauses:          m.ConsumerPauses,
+		KafkaRegionCircuitState: m.KafkaRegionCircuitState,
+		KafkaActiveRegion:       m.KafkaActiveRegion,
 	}
 
 	histogramMetrics := map[string]kit.Histogram{

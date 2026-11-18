@@ -14,6 +14,7 @@ import (
 	"xmidt-org/splitter/internal/metrics"
 	"xmidt-org/splitter/internal/observe"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/xmidt-org/wrp-go/v5"
 	"github.com/xmidt-org/wrpkafka"
 )
@@ -38,7 +39,9 @@ type Publisher interface {
 // Publisher implements the publisher using wrpkafka.
 // It manages the publisher lifecycle, message production, and graceful shutdown.
 type KafkaPublisher struct {
+	// wrpPublisher is the publisher for the target (primary) region.
 	wrpPublisher  *wrpkafka.Publisher
+	failover      *failoverGroup
 	config        *publisherConfig
 	logger        *slog.Logger
 	logEmitter    *observe.Subject[log.Event]
@@ -71,32 +74,66 @@ func New(opts ...Option) (*KafkaPublisher, error) {
 		return nil, err
 	}
 
-	// Create the underlying wrpkafka publisher
-	// Build dynamic config with TopicMap from converted routes
-	dynamicConfig := publisher.config.dynamicConfig
-	dynamicConfig.TopicMap = publisher.config.topicRoutes
-
-	wrpPublisher := &wrpkafka.Publisher{
-		Brokers:                      publisher.config.brokers.Regions[publisher.config.brokers.TargetRegion],
-		InitialDynamicConfig:         dynamicConfig,
-		SASL:                         publisher.config.sasl,
-		TLS:                          publisher.config.tls,
-		MaxBufferedRecords:           publisher.config.maxBufferedRecords,
-		MaxBufferedBytes:             publisher.config.maxBufferedBytes,
-		RequestTimeout:               publisher.config.requestTimeout,
-		RecordDeliveryTimeout:        publisher.config.recordDeliveryTimeout,
-		CleanupTimeout:               publisher.config.cleanupTimeout,
-		MaxRequestRetries:            publisher.config.maxRequestRetries,
-		MaxRecordRetries:             publisher.config.maxRecordRetries,
-		AllowAutoTopicCreation:       publisher.config.allowAutoTopicCreation,
-		Logger:                       publisher.config.logger,
-		InitialPublishEventListeners: publisher.config.publishEventListeners,
-		Prometheus:                   publisher.toWRPKafkaPrometheusConfig(),
+	// Create one wrpkafka publisher per region, target region first. Without
+	// failover there is only the target region and no circuit breaker.
+	var failoverCfg *FailoverConfig
+	if publisher.config.brokers.Failover.Enabled {
+		cfg := publisher.config.brokers.Failover.withDefaults()
+		failoverCfg = &cfg
 	}
 
-	publisher.wrpPublisher = wrpPublisher
+	publisher.failover = newFailoverGroup(publisher.logEmitter, publisher.metricEmitter)
+	for i, name := range publisher.config.brokers.regionOrder() {
+		wrpPublisher := publisher.newWRPPublisher(name)
+		if i == 0 {
+			publisher.wrpPublisher = wrpPublisher
+		}
+		publisher.failover.add(name, wrpPublisher, failoverCfg)
+	}
 
 	return publisher, nil
+}
+
+// newWRPPublisher creates the underlying wrpkafka publisher for a region.
+func (p *KafkaPublisher) newWRPPublisher(regionName string) *wrpkafka.Publisher {
+	// Build dynamic config with TopicMap from converted routes
+	dynamicConfig := p.config.dynamicConfig
+	dynamicConfig.TopicMap = p.config.topicRoutes
+
+	return &wrpkafka.Publisher{
+		Brokers:                      p.config.brokers.Regions[regionName],
+		InitialDynamicConfig:         dynamicConfig,
+		SASL:                         p.config.sasl,
+		TLS:                          p.config.tls,
+		MaxBufferedRecords:           p.config.maxBufferedRecords,
+		MaxBufferedBytes:             p.config.maxBufferedBytes,
+		RequestTimeout:               p.config.requestTimeout,
+		RecordDeliveryTimeout:        p.config.recordDeliveryTimeout,
+		CleanupTimeout:               p.config.cleanupTimeout,
+		MaxRequestRetries:            p.config.maxRequestRetries,
+		MaxRecordRetries:             p.config.maxRecordRetries,
+		AllowAutoTopicCreation:       p.config.allowAutoTopicCreation,
+		Logger:                       p.config.logger,
+		InitialPublishEventListeners: p.config.publishEventListeners,
+		Prometheus:                   p.regionPrometheusConfig(regionName),
+	}
+}
+
+// regionPrometheusConfig returns the franz-go metrics config for a region. When
+// failover is enabled every region registers the same metrics, so each region's
+// registerer adds a "region" label to keep the registrations distinct.
+func (p *KafkaPublisher) regionPrometheusConfig(regionName string) wrpkafka.PrometheusConfig {
+	cfg := p.toWRPKafkaPrometheusConfig()
+	if !p.config.brokers.Failover.Enabled || cfg.Namespace == "" {
+		return cfg
+	}
+
+	registerer := cfg.Registerer
+	if registerer == nil {
+		registerer = prometheus.DefaultRegisterer
+	}
+	cfg.Registerer = prometheus.WrapRegistererWith(prometheus.Labels{metrics.RegionLabel: regionName}, registerer)
+	return cfg
 }
 
 // toWRPKafkaPrometheusConfig converts our PrometheusConfig to wrpkafka.PrometheusConfig.
@@ -130,12 +167,18 @@ func (p *KafkaPublisher) Start() error {
 
 	// log the target broker at startup for visibility
 	p.logEmitter.Notify(log.NewEvent(log.LevelInfo, "Starting WRP publisher with configured target broker", map[string]any{
-		"brokers": p.config.brokers.TargetRegion,
+		"brokers":  p.config.brokers.TargetRegion,
+		"failover": p.config.brokers.Failover.Enabled,
 	}))
 
-	// Add event listener for all publish events (success and failure)
+	if p.config.brokers.Failover.Enabled && p.config.recordDeliveryTimeout <= 0 && p.config.maxRecordRetries <= 0 {
+		p.logEmitter.Notify(log.NewEvent(log.LevelWarn, "failover is enabled without record_delivery_timeout or record_retries; "+
+			"an unreachable region will only be detected once the producer buffer is full", nil))
+	}
+
+	// Listener for all publish events (success and failure), shared by every region.
 	// Application-level metrics are always enabled
-	p.wrpPublisher.AddPublishEventListener(func(event *wrpkafka.PublishEvent) {
+	publishListener := func(event *wrpkafka.PublishEvent) {
 
 		errorType := "success"
 		if event.Error != nil {
@@ -169,15 +212,15 @@ func (p *KafkaPublisher) Start() error {
 			},
 		})
 
-	})
+	}
 
 	// Set up buffer utilization function for automatic Prometheus scraping (always enabled)
 	if p.config.maxBufferedRecords > 0 {
-		metrics.BufferUtilization = p.wrpPublisher.BufferedRecords
+		metrics.BufferUtilization = p.failover.bufferedRecords
 	}
 
-	// Start the wrpkafka publisher
-	if err := p.wrpPublisher.Start(); err != nil {
+	// Start the wrpkafka publisher(s)
+	if err := p.failover.start(publishListener); err != nil {
 		p.logEmitter.Notify(log.NewEvent(log.LevelError, "Failed to start WRP publisher", map[string]any{
 			"error": err.Error(),
 		}))
@@ -204,7 +247,7 @@ func (p *KafkaPublisher) Stop(ctx context.Context) error {
 		metrics.BufferUtilization = nil
 	}
 
-	p.wrpPublisher.Stop(ctx)
+	p.failover.stop(ctx)
 	p.started = false
 	p.logEmitter.Notify(log.NewEvent(log.LevelInfo, "WRP publisher stopped", nil))
 
@@ -236,7 +279,7 @@ func (p *KafkaPublisher) Produce(ctx context.Context, msg *wrp.Message) (wrpkafk
 		return wrpkafka.Failed, ErrPublisherNotStarted
 	}
 
-	outcome, err := p.wrpPublisher.Produce(ctx, msg)
+	outcome, err := p.failover.produce(ctx, msg)
 	if err != nil {
 		p.logEmitter.Notify(log.NewEvent(log.LevelError, "Failed to produce WRP message", map[string]any{
 			"error":        err.Error(),

@@ -562,6 +562,41 @@ func (suite *PublisherTestSuite) TestStart() {
 	}
 }
 
+// Test that failover creates one client per region, and that their franz-go
+// metrics can share a registry without colliding.
+func (suite *PublisherTestSuite) TestStartWithFailover() {
+	registry := prometheus.NewRegistry()
+	brokers := Brokers{
+		TargetRegion: testRegionUSEast1,
+		Regions: map[string][]string{
+			testRegionUSEast1: {testBrokerLocal},
+			"us-west-2":       {testBrokerLocal},
+		},
+		Failover: FailoverConfig{Enabled: true},
+	}
+
+	p, err := New(
+		WithBrokers(brokers),
+		WithTopicRoutes(wrpkafka.TopicRoute{Topic: testTopicTest, Pattern: ".*"}),
+		WithPrometheusConfig(&PrometheusConfig{Namespace: testNamespaceXmidt, Registerer: registry}),
+	)
+	suite.Require().NoError(err)
+	suite.Len(p.failover.regions, 2)
+	suite.Equal(testRegionUSEast1, p.failover.regions[0].name, "target region must be preferred")
+
+	suite.Require().NoError(p.Start())
+	suite.NoError(p.Stop(context.Background()))
+
+	// Each region registers its metrics through a region-labeled registerer, so
+	// registering the same collector for both regions must not collide.
+	for _, name := range []string{testRegionUSEast1, "us-west-2"} {
+		reg := p.regionPrometheusConfig(name).Registerer
+		suite.NoError(reg.Register(prometheus.NewCounter(prometheus.CounterOpts{Name: "region_probe"})))
+	}
+	suite.Error(registry.Register(prometheus.NewCounter(prometheus.CounterOpts{Name: "region_probe"})),
+		"unlabeled registration should collide with the labeled ones")
+}
+
 // Test Stop method behavior
 func (suite *PublisherTestSuite) TestStop() {
 	tests := []struct {

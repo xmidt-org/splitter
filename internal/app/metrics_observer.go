@@ -14,18 +14,22 @@ import (
 
 type MetricsIn struct {
 	fx.In
-	ConsumerFetchErrors    kit.Counter   `name:"fetch_errors"`
-	ConsumerCommitErrors   kit.Counter   `name:"commit_errors"`
-	ConsumerPauses         kit.Gauge     `name:"fetch_pauses"`
-	PublisherOutcomes      kit.Counter   `name:"publish_outcomes"`
-	PublisherErrorsCounter kit.Counter   `name:"publish_errors_total"`
-	BucketKeyErrorCount    kit.Counter   `name:"bucket_key_error_count"`
-	KafkaPublished         kit.Counter   `name:"kafka_messages_published_total"`
-	KafkaPublishLatency    kit.Histogram `name:"kafka_publish_latency_seconds"`
-	Panics                 kit.Counter   `name:"panics_total"`
-	UnknownMetrics         kit.Counter   `name:"unknown_metrics_total"`
-	MetricPanics           kit.Counter   `name:"metric_panics_total"`
-	MalformedMessageCount  kit.Counter   `name:"malformed_message_count"`
+	ConsumerFetchErrors           kit.Counter   `name:"fetch_errors"`
+	ConsumerCommitErrors          kit.Counter   `name:"commit_errors"`
+	ConsumerPauses                kit.Gauge     `name:"fetch_pauses"`
+	PublisherOutcomes             kit.Counter   `name:"publish_outcomes"`
+	PublisherErrorsCounter        kit.Counter   `name:"publish_errors_total"`
+	BucketKeyErrorCount           kit.Counter   `name:"bucket_key_error_count"`
+	KafkaPublished                kit.Counter   `name:"kafka_messages_published_total"`
+	KafkaPublishLatency           kit.Histogram `name:"kafka_publish_latency_seconds"`
+	KafkaRegionFailovers          kit.Counter   `name:"kafka_region_failover_total"`
+	KafkaRegionCircuitTransitions kit.Counter   `name:"kafka_region_circuit_transitions_total"`
+	KafkaRegionCircuitState       kit.Gauge     `name:"kafka_region_circuit_state"`
+	KafkaActiveRegion             kit.Gauge     `name:"kafka_active_region"`
+	Panics                        kit.Counter   `name:"panics_total"`
+	UnknownMetrics                kit.Counter   `name:"unknown_metrics_total"`
+	MetricPanics                  kit.Counter   `name:"metric_panics_total"`
+	MalformedMessageCount         kit.Counter   `name:"malformed_message_count"`
 }
 
 type metricsObserverIn struct {
@@ -42,18 +46,22 @@ var MetricObserversModule = fx.Module("metrics_observers",
 	fx.Provide(
 		func(in MetricsIn) metrics.Metrics {
 			return metrics.Metrics{
-				ConsumerFetchErrors:    in.ConsumerFetchErrors,
-				ConsumerCommitErrors:   in.ConsumerCommitErrors,
-				ConsumerPauses:         in.ConsumerPauses,
-				BucketKeyErrorCount:    in.BucketKeyErrorCount,
-				PublisherOutcomes:      in.PublisherOutcomes,
-				PublisherErrorsCounter: in.PublisherErrorsCounter,
-				Panics:                 in.Panics,
-				KafkaPublished:         in.KafkaPublished,
-				KafkaPublishLatency:    in.KafkaPublishLatency,
-				UnknownMetrics:         in.UnknownMetrics,
-				MetricPanics:           in.MetricPanics,
-				MalformedMessageCount:  in.MalformedMessageCount,
+				ConsumerFetchErrors:           in.ConsumerFetchErrors,
+				ConsumerCommitErrors:          in.ConsumerCommitErrors,
+				ConsumerPauses:                in.ConsumerPauses,
+				BucketKeyErrorCount:           in.BucketKeyErrorCount,
+				PublisherOutcomes:             in.PublisherOutcomes,
+				PublisherErrorsCounter:        in.PublisherErrorsCounter,
+				KafkaRegionFailovers:          in.KafkaRegionFailovers,
+				KafkaRegionCircuitTransitions: in.KafkaRegionCircuitTransitions,
+				KafkaRegionCircuitState:       in.KafkaRegionCircuitState,
+				KafkaActiveRegion:             in.KafkaActiveRegion,
+				Panics:                        in.Panics,
+				KafkaPublished:                in.KafkaPublished,
+				KafkaPublishLatency:           in.KafkaPublishLatency,
+				UnknownMetrics:                in.UnknownMetrics,
+				MetricPanics:                  in.MetricPanics,
+				MalformedMessageCount:         in.MalformedMessageCount,
 			}
 		}),
 	fx.Provide(
