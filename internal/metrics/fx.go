@@ -44,10 +44,16 @@ const (
 	KafkaPublished         = "kafka_messages_published_total"
 	KafkaPublishLatency    = "kafka_publish_latency_seconds"
 	KafkaBufferUtilization = "kafka_buffer_utilization_percentage"
-	Panics                 = "panics_total"
-	UnknownMetrics         = "unknown_metrics_total"
-	MetricPanics           = "metric_panics_total"
-	MalformedMessageCount  = "malformed_message_count"
+
+	// Kafka regional failover metrics
+	KafkaRegionFailovers          = "kafka_region_failover_total"
+	KafkaRegionCircuitTransitions = "kafka_region_circuit_transitions_total"
+	KafkaRegionCircuitState       = "kafka_region_circuit_state"
+	KafkaActiveRegion             = "kafka_active_region"
+	Panics                        = "panics_total"
+	UnknownMetrics                = "unknown_metrics_total"
+	MetricPanics                  = "metric_panics_total"
+	MalformedMessageCount         = "malformed_message_count"
 )
 
 // labels
@@ -59,6 +65,11 @@ const (
 	MemberIdLabel           = "member"
 	ClientIdLabel           = "client"
 	TopicShardStrategyLabel = "topic_shard_strategy"
+	RegionLabel             = "region"
+	FromRegionLabel         = "from_region"
+	ToRegionLabel           = "to_region"
+	FromStateLabel          = "from_state"
+	ToStateLabel            = "to_state"
 	OutcomeLabel            = "outcome"
 	PanicTypeLabel          = "panic_type"
 	MetricNameLabel         = "metric_name"
@@ -131,6 +142,30 @@ var fxMetrics = []metricDefinition{
 		Help:      "Percentage of Kafka producer buffer utilization",
 		Labels:    TopicLabel,
 		GaugeFunc: getKafkaBufferUtilization,
+	},
+	{
+		Type:   COUNTER,
+		Name:   KafkaRegionFailovers,
+		Help:   "Total number of times publishing moved from one Kafka region to another (failover or failback)",
+		Labels: fmt.Sprintf("%s,%s", FromRegionLabel, ToRegionLabel),
+	},
+	{
+		Type:   COUNTER,
+		Name:   KafkaRegionCircuitTransitions,
+		Help:   "Total number of circuit breaker state transitions per Kafka region",
+		Labels: fmt.Sprintf("%s,%s,%s", RegionLabel, FromStateLabel, ToStateLabel),
+	},
+	{
+		Type:   GAUGE,
+		Name:   KafkaRegionCircuitState,
+		Help:   "Circuit breaker state per Kafka region (0=closed, 1=half-open, 2=open)",
+		Labels: RegionLabel,
+	},
+	{
+		Type:   GAUGE,
+		Name:   KafkaActiveRegion,
+		Help:   "Whether a Kafka region is the one currently receiving published messages (1=active, 0=inactive)",
+		Labels: RegionLabel,
 	},
 	{
 		Type:   COUNTER,

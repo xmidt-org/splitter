@@ -25,6 +25,7 @@ import (
 var (
 	ErrMissingBrokers     = errors.New("brokers cannot be empty")
 	ErrMissingTopicRoutes = errors.New("topic routes cannot be empty")
+	ErrNoFailoverRegions  = errors.New("failover is enabled but no failover regions are available")
 )
 
 // Option is a functional option for configuring a KafkaPublisher.
@@ -87,7 +88,7 @@ func (c *publisherConfig) validate() error {
 		return fmt.Errorf("target_region cannot be empty")
 	}
 
-	return nil
+	return c.brokers.validateFailover()
 }
 
 // WithBrokers sets the Kafka broker addresses.

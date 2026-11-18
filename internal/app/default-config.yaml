@@ -72,6 +72,20 @@ producer:
         - "localhost:9092"
       us-west-2:
         - "localhost:9092"
+    # Automatic regional failover (optional, disabled by default).
+    # target_region is always preferred; while its circuit breaker is open, messages go to
+    # the next region and return once the breaker closes. Breakers trip on asynchronous
+    # delivery failures (record timeouts, retries exhausted, buffer full, connection errors).
+    # The client retries forever by default, so set record_delivery_timeout (e.g. 10s) or
+    # record_retries, otherwise an unreachable region is only noticed once the buffer fills.
+    # Alert on kafka_region_failover_total and kafka_region_circuit_state.
+    # failover:
+    #   enabled: true
+    #   regions: ["us-west-2"]    # ordered; defaults to all other regions alphabetically
+    #   consecutive_failures: 5   # failures in a row that open a region's breaker
+    #   open_timeout: 30s         # time before an open region is probed again
+    #   half_open_successes: 3    # successes in a row that close the breaker
+    #   interval: 0s              # clears failure counts periodically while closed (0 = never)
 
   # SASL Authentication (optional)
   # sasl:
